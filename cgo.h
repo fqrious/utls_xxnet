@@ -7,7 +7,13 @@ extern "C" {
 
 PyObject* pymodule_def();
 // PyObject* PyInit_ss(void);
+static inline void INCREF(PyObject* obj){
+	Py_INCREF(obj);
+}
 
+static inline void DECREF(PyObject* obj){
+	Py_DECREF(obj);
+}
 
 #ifdef __cplusplus
 }

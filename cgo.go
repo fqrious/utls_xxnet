@@ -5,7 +5,7 @@ package main
 // #cgo CFLAGS: -I/usr/include/python3.10 -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion
 // #cgo LDFLAGS: -L/usr/lib -lpython3.10 -lcrypt -ldl  -lm -lm
 
-#include <Python.h>
+// #include <Python.h>
 #include <stdlib.h>
 #include "cgo.h"
 inline PyObject* pybuildbytes(char* val, int len){
@@ -129,6 +129,19 @@ func go_new_ssl_context(protocol uint16) uintptr {
 		return 0
 	}
 	return NewHandle[any](ctx).Ptr()
+}
+
+//export go_new_ssl_context_from_bytes
+func go_new_ssl_context_from_bytes(hello_bytes *C.PyObject, blunt, always_pad bool) uintptr {
+	// C.INCREF(hello_bytes)
+	// defer C.DECREF(hello_bytes)
+	hello := py2go_bytes(hello_bytes, false)
+	ctx, err := NewSSLContextFromHelloBytes(hello, blunt, always_pad)
+	if err != nil {
+		handleError(err)
+		return 0
+	}
+	return uintptr(NewHandle[any](ctx))
 }
 
 //export go_clear_handle

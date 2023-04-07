@@ -5,30 +5,13 @@ extern "C"{
 
 #include <Python.h>
 #include "cgo.h"
-// #include "ss.h"
-
-// struct PyModuleDef moduledef = {
-// 		PyModuleDef_HEAD_INIT,
-// 		"name",
-// 		NULL,
-// 		-1,
-// 		_pyutls_functions,
-// 	};
+#include "_cgo_export.h"
 typedef size_t GoPtr;
-typedef short GoInt16;
-typedef unsigned short GoUint16;
-typedef int GoInt32;
-typedef unsigned int GoUint32;
-extern GoPtr go_new_ssl_connection(GoPtr ctxptr, const char* address, const char* sni);
-extern PyObject* go_ssl_connection_read(GoPtr cptr, GoUint32 size);
-extern long int go_ssl_connection_write(GoPtr cptr, PyObject* pybuf);
-extern GoPtr go_new_ssl_context(GoUint16 protocol);
-extern void go_clear_handle(GoPtr hptr);
 
 
 static PyObject * new_ssl_connection(PyObject *self, PyObject *args)
 {
-    const char *address, *sni;
+    char *address, *sni;
     GoPtr ctxptr;
     if (!PyArg_ParseTuple(args, "nss", &ctxptr, &address, &sni))
         return NULL;
@@ -42,6 +25,17 @@ static PyObject * new_ssl_context(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "H", &protocol))
         return NULL;
     auto ctx = go_new_ssl_context(protocol);
+    return PyLong_FromLong(ctx);
+}
+
+static PyObject * new_ssl_context_from_bytes(PyObject *self, PyObject *args)
+{
+    PyObject * bytes;
+	bool blunt, padding;
+    if (!PyArg_ParseTuple(args, "ppS", &blunt, &padding, &bytes))
+        return NULL;
+
+    auto ctx = go_new_ssl_context_from_bytes(bytes, blunt, padding);
     return PyLong_FromLong(ctx);
 }
 
@@ -70,16 +64,10 @@ static PyMethodDef functions[] = {
 	{"new_ssl_connection", new_ssl_connection, METH_VARARGS, "Create a new socket"},
 	{"ssl_connection_read", ssl_connection_read, METH_VARARGS, "Read bytesize from SSLConnwction"},
 	{"ssl_connection_write", ssl_connection_write, METH_VARARGS, "Write bytes to SSLConnwction"},
+	{"new_ssl_context_from_bytes", new_ssl_context_from_bytes, METH_VARARGS, "Create a new SSLContext"},
 	{"new_ssl_context", new_ssl_context, METH_VARARGS, "Create a new SSLContext"},
 	{NULL, NULL, 0, NULL},
 };
-// static moduledef = new PyModuleDef {
-// 		PyModuleDef_HEAD_INIT,
-// 		"name",
-// 		NULL,
-// 		-1,
-// 		functions,
-// 	};
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
