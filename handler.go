@@ -131,6 +131,14 @@ func (h Handle[T]) Value() T {
 // Value returns the associated Go value for a valid handle.
 //
 // The method panics if the handle is invalid.
+func (h Handle[T]) Valid() bool {
+	_, ok := handles.Load(uintptr(h))
+	return ok
+}
+
+// Value returns the associated Go value for a valid handle.
+//
+// The method panics if the handle is invalid.
 func (h Handle[T]) Ptr() uintptr {
 	return uintptr(h)
 }

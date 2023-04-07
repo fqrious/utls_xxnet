@@ -21,7 +21,7 @@ func (ctx *SSLContext) SetCA(ca os.File) {
 func (ctx *SSLContext) WrapSocket(socket net.Conn) (*tls.UConn, error) {
 	conn := tls.UClient(socket, ctx.config, tls.HelloCustom)
 	err := conn.ApplyPreset(ctx.spec)
-	conn.Handshake()
+	// conn.Handshake()
 	return conn, err
 }
 

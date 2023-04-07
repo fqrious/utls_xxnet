@@ -4,8 +4,13 @@ package main
 #cgo pkg-config: python-3.10
 // #cgo CFLAGS: -I/usr/include/python3.10 -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion
 // #cgo LDFLAGS: -L/usr/lib -lpython3.10 -lcrypt -ldl  -lm -lm
+#cgo CFLAGS: -DCGOTEST
+#ifdef CGOTEST
+#include <python3.10/Python.h>
+#else
+#include <Python.h>
+#endif
 
-// #include <Python.h>
 #include <stdlib.h>
 #include "cgo.h"
 inline PyObject* pybuildbytes(char* val, int len){
@@ -119,6 +124,60 @@ func go_ssl_connection_write(cptr uintptr, pybuf *C.PyObject) C.long {
 		return 0
 	}
 	return C.long(bytes_written)
+}
+
+//export go_ssl_connection_do_handshake
+func go_ssl_connection_do_handshake(cptr uintptr) bool {
+	c := Handle[*SSLConnection](cptr).Value()
+	err := c.conn.Handshake()
+	if err != nil {
+		handleError(err)
+		return false
+	}
+	return true
+}
+
+//export go_ssl_connection_h2_support
+func go_ssl_connection_h2_support(cptr uintptr) bool {
+	c := Handle[*SSLConnection](cptr).Value()
+	state := c.conn.ConnectionState()
+	if !state.HandshakeComplete {
+		handleError(fmt.Errorf("handshake not complete"))
+		return false
+	}
+	return state.NegotiatedProtocol == "h2"
+}
+
+//export go_ssl_connection_close
+func go_ssl_connection_close(cptr uintptr, close_context bool) bool {
+	connptr := Handle[*SSLConnection](cptr)
+	defer connptr.Delete() // clean up handle file
+	c := connptr.Value()
+
+	err := c.conn.Close()
+	if err != nil {
+		handleError(err)
+		return false
+	}
+	return true
+}
+
+//export go_ssl_connection_closed
+func go_ssl_connection_closed(cptr uintptr) bool {
+	connptr := Handle[*SSLConnection](cptr)
+	// check if handle is valid
+	if valid := connptr.Valid(); !valid {
+		return true
+	}
+	// _ = connptr.Value()
+	return false
+}
+
+//export go_delete_handle
+func go_delete_handle(hptr uintptr) bool {
+	handle := Handle[any](hptr)
+	handle.Delete()
+	return true
 }
 
 //export go_new_ssl_context

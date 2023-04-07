@@ -15,8 +15,18 @@ def test2():
     print(type(packet), packet[0])
     ctx  = pyutls.new_ssl_context_from_bytes(True, False, packet)
     sock = pyutls.new_ssl_connection(ctx, "www.google.com:443", "www.google.com")
+    # h2support = pyutls.ssl_connection_h2_support(sock)
+    # print("Before Handshake, H2 Support =>", h2support)
     print("writing...")
     pyutls.ssl_connection_write(sock, b"HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n")
+
+    h2support = pyutls.ssl_connection_h2_support(sock)
+    print("After Handshake, H2 Support =>", h2support)
+
+    # closed = pyutls.ssl_connection_close(sock) #close
+    # print("Closed =>", closed)
+    closed = pyutls.ssl_connection_closed(sock) #close
+    print("Closed =>", closed)
     print("reading...")
     out = pyutls.ssl_connection_read(sock, 1000)
     print(len(out), out)
