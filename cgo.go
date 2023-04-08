@@ -4,12 +4,6 @@ package main
 #cgo pkg-config: python-3.10
 // #cgo CFLAGS: -I/usr/include/python3.10 -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion
 // #cgo LDFLAGS: -L/usr/lib -lpython3.10 -lcrypt -ldl  -lm -lm
-#cgo CFLAGS: -DCGOTEST
-#ifdef CGOTEST
-#include <python3.10/Python.h>
-#else
-#include <Python.h>
-#endif
 
 #include <stdlib.h>
 #include "cgo.h"
@@ -26,6 +20,7 @@ inline void setValue(long* k, long v){
 import "C"
 import (
 	"fmt"
+	"strings"
 	"unsafe"
 
 	tls "github.com/refraction-networking/utls"
@@ -148,6 +143,28 @@ func go_ssl_connection_h2_support(cptr uintptr) bool {
 	return state.NegotiatedProtocol == "h2"
 }
 
+//export go_ssl_connection_get_cert
+func go_ssl_connection_get_cert(cptr uintptr) *C.PyObject {
+	c := Handle[*SSLConnection](cptr).Value()
+	state := c.conn.ConnectionState()
+	if !state.HandshakeComplete {
+		handleError(fmt.Errorf("handshake not complete"))
+		return nil
+	}
+	if len(state.PeerCertificates) == 0 {
+		handleError(fmt.Errorf("len(peer_certificates) is 0"))
+		return nil
+	}
+	cert := state.PeerCertificates[0]
+	subject := cert.Subject.String()
+	commonName := cert.Subject.CommonName
+	issuer := cert.Issuer.String()
+	issuerName := cert.Issuer.CommonName
+	altNames := cert.DNSNames
+	ret_list := []string{subject, commonName, issuer, issuerName, strings.Join(altNames, ";!")}
+	return build_bytes([]byte(strings.Join(ret_list, "|!")))
+}
+
 //export go_ssl_connection_close
 func go_ssl_connection_close(cptr uintptr, close_context bool) bool {
 	connptr := Handle[*SSLConnection](cptr)
@@ -206,9 +223,6 @@ func go_new_ssl_context_from_bytes(hello_bytes *C.PyObject, blunt, always_pad bo
 //export go_clear_handle
 func go_clear_handle(hptr uintptr) {
 	Handle[any](hptr).Delete()
-}
-
-func main() {
 }
 
 func init2() {

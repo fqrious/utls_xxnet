@@ -45,6 +45,8 @@ def test_wrap(ctx, name):
 
     h2support = sock.is_support_h2()
     print("After Handshake, H2 Support =>", h2support)
+    cert_bytes = sock.get_cert()
+    print("Cert", cert_bytes)
     if h2support:
         print("h2 connection not implemented")
         return

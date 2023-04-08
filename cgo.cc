@@ -68,6 +68,16 @@ extern "C"
         return PyBool_FromBool(h2_support);
     }
 
+
+    static PyObject *ssl_connection_leaf_cert(PyObject *self, PyObject *args)
+    {
+        GoPtr ctxptr;
+        if (!PyArg_ParseTuple(args, "n", &ctxptr))
+            return NULL;
+        PyObject * leaf_cert = go_ssl_connection_get_cert(ctxptr);
+        return leaf_cert;
+    }
+
         static PyObject *ssl_connection_close(PyObject *self, PyObject *args)
     {
         // const char **kw = {"close_context",NULL};
@@ -115,6 +125,7 @@ extern "C"
         {"ssl_connection_close", ssl_connection_close, METH_VARARGS, "Close SSLConnection"},
         {"ssl_connection_closed", ssl_connection_closed, METH_VARARGS, "Check if SSLConnection is closed"},
         {"ssl_connection_h2_support", ssl_connection_h2_support, METH_VARARGS, "Check if SSLConnection supports h2"},
+        {"ssl_connection_leaf_cert", ssl_connection_leaf_cert, METH_VARARGS, "Check if SSLConnection supports h2"},
 
         // ssl_context
         {"new_ssl_context_from_bytes", new_ssl_context_from_bytes, METH_VARARGS, "Create a new SSLContext"},

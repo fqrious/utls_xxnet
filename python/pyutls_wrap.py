@@ -21,6 +21,7 @@ from pyutls import (
     ssl_connection_h2_support,
     ssl_connection_closed,
     ssl_connection_do_handshake,
+    ssl_connection_leaf_cert,
     
     #  context functions
     new_ssl_context,
@@ -269,9 +270,24 @@ class SSLConnection(HandleObject):
         #     "altName": altName
         # }
 
-        # return self.peer_cert
+        cert_bytes = self.run(ssl_connection_leaf_cert)
+        # from asn1crypto.x509 import Certificate
+        # cert = Certificate.load(cert)
 
-        raise NotImplementedError()
+        # try:
+        #     altName = cert.subject_alt_name_value.native
+        # except:
+        #     altName = []
+        cert, commonname, issuer,  issuer_commonname, altNames =  cert_bytes.split(b"|!")
+        self.peer_cert = {
+            "cert": cert,
+            'issuer': issuer,
+            "issuer_commonname": issuer_commonname,
+            "commonName": commonname,
+            "altName": altNames.split(b";!")
+        }
+
+        return self.peer_cert
 
     def send(self, data, flags=0):
         # with self._lock:
