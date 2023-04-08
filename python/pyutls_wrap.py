@@ -271,20 +271,24 @@ class SSLConnection(HandleObject):
         # }
 
         cert_bytes = self.run(ssl_connection_leaf_cert)
-        # from asn1crypto.x509 import Certificate
-        # cert = Certificate.load(cert)
+        # cert, subject, commonname, issuer,  issuer_commonname, altNames =  cert_bytes.split(b"|!")
+        # self.peer_cert = {
+        #     "cert": cert,
+        #     "subject": subject,
+        #     'issuer': issuer,
+        #     "issuer_commonname": issuer_commonname,
+        #     "commonName": commonname,
+        #     "altName": altNames.split(b";!")
+        # }
 
-        # try:
-        #     altName = cert.subject_alt_name_value.native
-        # except:
-        #     altName = []
-        cert, commonname, issuer,  issuer_commonname, altNames =  cert_bytes.split(b"|!")
+
+        subject, commonname, issuer,  issuer_commonname, altNames =  cert_bytes.decode("utf-8").split("|!")
         self.peer_cert = {
-            "cert": cert,
+            "cert": subject,
             'issuer': issuer,
             "issuer_commonname": issuer_commonname,
             "commonName": commonname,
-            "altName": altNames.split(b";!")
+            "altName": altNames.split(";!")
         }
 
         return self.peer_cert

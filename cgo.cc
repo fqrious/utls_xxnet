@@ -43,9 +43,12 @@ extern "C"
     {
         int read_size;
         GoPtr ctxptr;
+        PyObject* bytes;
         if (!PyArg_ParseTuple(args, "ni", &ctxptr, &read_size))
             return NULL;
-        auto bytes = go_ssl_connection_read(ctxptr, read_size);
+        Py_BEGIN_ALLOW_THREADS
+        bytes = go_ssl_connection_read(ctxptr, read_size);
+        Py_END_ALLOW_THREADS
         return bytes;
     }
 

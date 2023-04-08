@@ -237,3 +237,16 @@ func init2() {
 	fmt.Println("<==========> Response <==========>", "\n", string(buf))
 
 }
+
+func main() {
+
+	/////////
+	ctx := go_new_ssl_context(tls.VersionTLS13)
+	c := go_new_ssl_connection(ctx, C.CString("google.com:443"), C.CString("www.google.com"))
+	send_buf := build_bytes([]byte("yes"))
+	go_ssl_connection_write(c, send_buf)
+	pybuf := go_ssl_connection_read(c, 1024)
+	buf := py2go_bytes(pybuf, true)
+	fmt.Println("<==========> Response <==========>", "\n", string(buf))
+
+}
