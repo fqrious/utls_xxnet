@@ -4,8 +4,9 @@
 
 import socket
 import threading
+import codecs
 
-import selectors2 as selectors
+# import selectors2 as selectors
 import utils
 
 # from boringssl import lib as bssl, ffi
@@ -31,11 +32,11 @@ from pyutls import (
 
 class HandleObject:
     def __init__(self, handle):
-        self.__handle = handle
+        self._handle = handle
     
     @property
     def  handle(self):
-        return self.handle
+        return self._handle
 
     def __del__(self):
         close_go_handle(self.handle)
@@ -44,10 +45,14 @@ class HandleObject:
         return fn(self.handle, *args, **kwargs)
 
 class SSLContext(HandleObject):
+    ALLOW_BLUNT_MIMICRY = True
+    ALWAYS_PAD = False
     def __init__(self, logger, ca_certs=None, cipher_suites=None, support_http2=True, protocol=None, handle=None):
         if handle:
             self.logger = logger
-            self.handle = handle
+            # self.handle = handle
+            # super(SSLContext, self).__init__(handle)
+            HandleObject.__init__(self, handle)
             return
 
         self.logger = logger
@@ -55,6 +60,7 @@ class SSLContext(HandleObject):
         self.support_http2 = support_http2
         handle = new_ssl_context(protocol)
         HandleObject.__init__(self, handle)
+        # super(SSLContext, self).__init__(handle)
 
         # method = bssl.BSSL_TLS_method()
         # self.ctx = bssl.BSSL_SSL_CTX_new(method)
@@ -91,8 +97,10 @@ class SSLContext(HandleObject):
         # bssl.SetCompression(self.ctx)
     
     @classmethod
-    def from_bytes(cls, logger, b : bytes):
-        handle = new_ssl_context_from_bytes(b)
+    def from_bytes(cls, logger, raw_bytes : bytes=None, hex:str=None):
+        if hex:
+            raw_bytes = codecs.decode(hex, "hex")
+        handle = new_ssl_context_from_bytes(cls.ALLOW_BLUNT_MIMICRY, cls.ALWAYS_PAD, raw_bytes)
         obj  = cls(logger, handle=handle)
         return obj
 
@@ -110,20 +118,20 @@ class SSLConnection(HandleObject):
         self._lock = threading.Lock()
         self._context = context
         self._sock = sock
-        self._fileno = self._sock.fileno()
         self.ip_str = utils.to_bytes(ip_str)
         self.sni = sni
         self._makefile_refs = 0
         self._on_close = on_close
         self.peer_cert = None
         self.socket_closed = False
-        self.timeout = self._sock.gettimeout() or 0.1
+        # self._fileno = self._sock.fileno()
+        # self.timeout = self._sock.gettimeout() or 0.1
         self.running = True
         self._connection = None
         self.wrap()
 
-        self.select2 = selectors.DefaultSelector()
-        self.select2.register(sock, selectors.EVENT_WRITE)
+        # self.select2 = selectors.DefaultSelector()
+        # self.select2.register(sock, selectors.EVENT_WRITE)
 
     def wrap(self):
         ip, port = utils.get_ip_port(self.ip_str)
@@ -146,7 +154,7 @@ class SSLConnection(HandleObject):
         #     bssl.BSSL_SSL_set_tlsext_host_name(self._connection, utils.to_bytes(self.sni))
 
         # bssl.BSSL_SSL_set_bio(self._connection, bio, bio)
-        handle = new_ssl_connection(self._context.handle, self.ip_str, self.sni)
+        handle = new_ssl_connection(self._context.handle, self.ip_str.decode(), self.sni)
         HandleObject.__init__(self, handle)
         # if self._context.support_http2:
         #     proto = b"h2"
@@ -318,7 +326,7 @@ class SSLConnection(HandleObject):
 
         #     dat = bytes(buf[:n])
         #     return dat
-        return ssl_connection_read(self, bufsiz)
+        return ssl_connection_read(self.handle, bufsiz)
 
     def recv_into(self, buf, nbytes=None):
         if not nbytes:
