@@ -34,8 +34,9 @@ extern "C"
         bool blunt, padding;
         if (!PyArg_ParseTuple(args, "ppS", &blunt, &padding, &bytes))
             return NULL;
-
+        Py_XINCREF(bytes);
         auto ctx = go_new_ssl_context_from_bytes(bytes, blunt, padding);
+        Py_XDECREF(bytes);
         return PyLong_FromLong(ctx);
     }
 

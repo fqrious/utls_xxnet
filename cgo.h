@@ -9,11 +9,11 @@ extern "C" {
 PyObject* pymodule_def();
 // PyObject* PyInit_ss(void);
 static inline void INCREF(PyObject* obj){
-	Py_INCREF(obj);
+	Py_XINCREF(obj);
 }
 
 static inline void DECREF(PyObject* obj){
-	Py_DECREF(obj);
+	Py_XDECREF(obj);
 }
 
 inline PyObject* PyBool_FromBool(bool truth){

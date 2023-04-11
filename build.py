@@ -35,7 +35,7 @@ ldflags = get_library_path() + " " + sysconfig.get_config_var('LDFLAGS')
 
 cflags += ' ' + os.environ.get("CFLAGS", '')
 ldflags += ' ' + os.environ.get("LDFLAGS", '')
-print(ldflags, cflags)
+print(ldflags, cflags, "|", sysconfig.get_config_var('LDFLAGS'))
 os.environ['CGO_CFLAGS']   = cflags
 os.environ['CGO_CXXFLAGS'] = cflags
 os.environ['CGO_LDFLAGS']  = ldflags

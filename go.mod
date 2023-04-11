@@ -3,7 +3,6 @@ module XX-net/utls_wrapper
 go 1.20
 
 require (
-	github.com/go-python/gopy v0.4.6
 	github.com/refraction-networking/utls v1.3.1
 	golang.org/x/sys v0.5.0
 )
