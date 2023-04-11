@@ -1,20 +1,14 @@
 package main
 
 /*
-#cgo pkg-config: python-3.10
+// #cgo pkg-config: python-3.10
 // #cgo CFLAGS: -I/usr/include/python3.10 -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion
 // #cgo LDFLAGS: -L/usr/lib -lpython3.10 -lcrypt -ldl  -lm -lm
 
 #include <stdlib.h>
 #include "cgo.h"
-inline PyObject* pybuildbytes(char* val, int len){
-	PyObject *ret = PyBytes_FromStringAndSize(val, len);
-	// PyObject_Print(ret, stdout, 0);
-	return ret;
-}
-inline void setValue(long* k, long v){
-	*k = v;
-}
+
+
 
 */
 import "C"
@@ -31,7 +25,7 @@ func build_bytes(b []byte) *C.PyObject {
 	if len(b) <= 0 {
 		panic("string too large")
 	}
-	p := C.malloc(C.ulong(len(b)))
+	p := C.malloc(C.uint64_t(len(b)))
 	sliceHeader := struct {
 		p   unsafe.Pointer
 		len int
@@ -40,7 +34,7 @@ func build_bytes(b []byte) *C.PyObject {
 	b_temp := *(*[]byte)(unsafe.Pointer(&sliceHeader))
 	copy(b_temp, b)
 	val := (*C.char)(p)
-	return C.pybuildbytes(val, C.int(len(b)))
+	return C.PyBytes_FromStringAndSize(val, C.int64_t(len(b)))
 }
 
 func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
@@ -55,7 +49,7 @@ func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
 func py2go_bytes(pybuf *C.PyObject, shouldCopy bool) []byte {
 	var (
 		bufptr *C.char
-		length C.long
+		length C.int64_t
 	)
 	C.PyBytes_AsStringAndSize(pybuf, &bufptr, &length)
 	pybuf_slice := pointer_as_slice[byte](unsafe.Pointer(bufptr), int(length))

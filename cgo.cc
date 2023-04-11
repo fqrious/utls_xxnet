@@ -7,12 +7,12 @@ extern "C"
 #include "cgo.h"
 #include "_cgo_export.h"
 
-    typedef size_t GoPtr;
+    typedef size_t GoHandle;
 
     static PyObject *new_ssl_connection(PyObject *self, PyObject *args)
     {
         char *address, *sni;
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "nss", &ctxptr, &address, &sni))
             return NULL;
         auto sts = go_new_ssl_connection(ctxptr, address, sni);
@@ -42,7 +42,7 @@ extern "C"
     static PyObject *ssl_connection_read(PyObject *self, PyObject *args)
     {
         int read_size;
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         PyObject* bytes;
         if (!PyArg_ParseTuple(args, "ni", &ctxptr, &read_size))
             return NULL;
@@ -55,7 +55,7 @@ extern "C"
     static PyObject *ssl_connection_write(PyObject *self, PyObject *args)
     {
         PyObject *bytes;
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "nS", &ctxptr, &bytes))
             return NULL;
         auto len = go_ssl_connection_write(ctxptr, bytes);
@@ -64,7 +64,7 @@ extern "C"
 
     static PyObject *ssl_connection_h2_support(PyObject *self, PyObject *args)
     {
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool h2_support = go_ssl_connection_h2_support(ctxptr);
@@ -74,7 +74,7 @@ extern "C"
 
     static PyObject *ssl_connection_leaf_cert(PyObject *self, PyObject *args)
     {
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         PyObject * leaf_cert = go_ssl_connection_get_cert(ctxptr);
@@ -85,7 +85,7 @@ extern "C"
     {
         // const char **kw = {"close_context",NULL};
         bool close_context = true;
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_close(ctxptr, close_context);
@@ -94,7 +94,7 @@ extern "C"
 
         static PyObject *ssl_connection_closed(PyObject *self, PyObject *args)
     {
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_closed(ctxptr);
@@ -103,7 +103,7 @@ extern "C"
 
         static PyObject *ssl_connection_do_handshake(PyObject *self, PyObject *args)
     {
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool done = go_ssl_connection_do_handshake(ctxptr);
@@ -112,7 +112,7 @@ extern "C"
 
         static PyObject *close_go_handle(PyObject *self, PyObject *args)
     {
-        GoPtr ctxptr;
+        GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_delete_handle(ctxptr);
@@ -148,13 +148,13 @@ extern "C"
         -1,
         functions,
     };
-    PyObject *pymodule_def()
-    {
-        return PyModule_Create(&moduledef);
-    }
+    // PyObject *pymodule_def()
+    // {
+    //     return PyModule_Create(&moduledef);
+    // }
 
     PyObject *PyInit_pyutls(void)
     {
-        return pymodule_def();
+        return PyModule_Create(&moduledef);
     }
 }
