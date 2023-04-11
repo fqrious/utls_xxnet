@@ -25,7 +25,7 @@ func build_bytes(b []byte) *C.PyObject {
 	if len(b) <= 0 {
 		panic("string too large")
 	}
-	p := C.malloc(C.uint64_t(len(b)))
+	p := C.malloc(C.size_t(len(b)))
 	sliceHeader := struct {
 		p   unsafe.Pointer
 		len int
@@ -34,7 +34,7 @@ func build_bytes(b []byte) *C.PyObject {
 	b_temp := *(*[]byte)(unsafe.Pointer(&sliceHeader))
 	copy(b_temp, b)
 	val := (*C.char)(p)
-	return C.PyBytes_FromStringAndSize(val, C.int64_t(len(b)))
+	return C.PyBytes_FromStringAndSize(val, C.ssize_t(len(b)))
 }
 
 func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
@@ -49,7 +49,7 @@ func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
 func py2go_bytes(pybuf *C.PyObject, shouldCopy bool) []byte {
 	var (
 		bufptr *C.char
-		length C.int64_t
+		length C.ssize_t
 	)
 	C.PyBytes_AsStringAndSize(pybuf, &bufptr, &length)
 	pybuf_slice := pointer_as_slice[byte](unsafe.Pointer(bufptr), int(length))
