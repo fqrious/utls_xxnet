@@ -32,9 +32,9 @@ func build_bytes(b []byte) *C.PyObject {
 		cap int
 	}{p, len(b) + 1, len(b) + 1}
 	b_temp := *(*[]byte)(unsafe.Pointer(&sliceHeader))
-	copy(b_temp, b)
+	copy(b_temp, b) // to be removed since python actually copies the memory
 	val := (*C.char)(p)
-	return C.PyBytes_FromStringAndSize(val, C.ssize_t(len(b)))
+	return C.PyBytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
 }
 
 func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
@@ -49,7 +49,7 @@ func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
 func py2go_bytes(pybuf *C.PyObject, shouldCopy bool) []byte {
 	var (
 		bufptr *C.char
-		length C.ssize_t
+		length C.Py_ssize_t
 	)
 	C.PyBytes_AsStringAndSize(pybuf, &bufptr, &length)
 	pybuf_slice := pointer_as_slice[byte](unsafe.Pointer(bufptr), int(length))
