@@ -46,6 +46,10 @@ func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
 	return *(*[]T)(unsafe.Pointer(&sliceHeader))
 }
 
+// func slice_as_pointer[T any](x []T) {
+// 	unsafe.Pointer(x)
+// }
+
 func py2go_bytes(pybuf *C.PyObject, shouldCopy bool) []byte {
 	var (
 		bufptr *C.char

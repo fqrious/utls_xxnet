@@ -17,7 +17,7 @@ def get_library_path():
     ldflags = ' '.join(paths)
     ldflags += " " + (sysconfig.get_config_var("BLDLIBRARY") or "")
     ldflags += " -lm"
-    return ldflags
+    return ''
 
 
 config = sysconfig.get_config_vars()
