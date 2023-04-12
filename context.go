@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"os"
 
@@ -41,7 +40,9 @@ func newSSLContext(spec *tls.ClientHelloSpec) *SSLContext {
 }
 
 func NewSSLContextFromHelloBytes(hello []byte, allow_blunt_mimicry, always_pad bool) (*SSLContext, error) {
-	fmt.Printf("received=> %x\n", hello)
+	// fmt.Printf("\nFp Hash: %x\n", md5.New().Sum(hello))
+	// fmt.Println("Allow Blunt: ", allow_blunt_mimicry)
+	// fmt.Println("Always Pad:  ", always_pad)
 	f := &tls.Fingerprinter{
 		AllowBluntMimicry: allow_blunt_mimicry,
 		AlwaysAddPadding:  always_pad,

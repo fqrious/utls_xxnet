@@ -1,4 +1,4 @@
-go build -buildmode=c-shared -o build/pyutls.so . || exit
+go build -buildmode=c-shared -ldflags=-w -o build/pyutls.so . || exit
 cp build/pyutls.so python/
 DIR=$PWD
 

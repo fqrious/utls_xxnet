@@ -31,7 +31,8 @@ extern "C"
     static PyObject *new_ssl_context_from_bytes(PyObject *self, PyObject *args)
     {
         PyObject *bytes;
-        bool blunt, padding;
+        int blunt, padding;
+        PyObject_Print(args, stdout, 0);
         if (!PyArg_ParseTuple(args, "ppS", &blunt, &padding, &bytes))
             return NULL;
         Py_XINCREF(bytes);
