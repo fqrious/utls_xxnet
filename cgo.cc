@@ -32,7 +32,6 @@ extern "C"
     {
         PyObject *bytes;
         int blunt, padding;
-        PyObject_Print(args, stdout, 0);
         if (!PyArg_ParseTuple(args, "ppS", &blunt, &padding, &bytes))
             return NULL;
         Py_XINCREF(bytes);
