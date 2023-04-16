@@ -15,8 +15,8 @@ extern "C"
         GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "nss", &ctxptr, &address, &sni))
             return NULL;
-        auto sts = go_new_ssl_connection(ctxptr, address, sni);
-        return PyLong_FromLong(sts);
+        auto tuple = go_new_ssl_connection(ctxptr, address, sni);
+        return tuple;
     }
 
     static PyObject *new_ssl_context(PyObject *self, PyObject *args)
@@ -47,9 +47,9 @@ extern "C"
         PyObject* bytes;
         if (!PyArg_ParseTuple(args, "ni", &ctxptr, &read_size))
             return NULL;
-        Py_BEGIN_ALLOW_THREADS
+        // Py_BEGIN_ALLOW_THREADS
         bytes = go_ssl_connection_read(ctxptr, read_size);
-        Py_END_ALLOW_THREADS
+        // Py_END_ALLOW_THREADS
         return bytes;
     }
 
@@ -157,5 +157,28 @@ extern "C"
     PyObject *PyInit_pyutls(void)
     {
         return PyModule_Create(&moduledef);
+    }
+
+
+
+
+
+    //
+    ssize_t duplicate_fd(ssize_t fd)
+    {
+        // Duplicate the file descriptor
+        int new_fd = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+        if (new_fd == -1)
+        {
+            PyErr_SetFromErrno(PyExc_IOError);
+            return 0;
+        }
+
+        return new_fd;
+    }
+
+    PyObject *ssl_connection_return(ssize_t handle, ssize_t fd)
+    {
+        return Py_BuildValue("(ii)", handle, fd);
     }
 }

@@ -26,7 +26,7 @@ func (ctx *SSLContext) WrapSocket(socket net.Conn) (*tls.UConn, error) {
 }
 
 func NewSSLContext(protocol uint16) (*SSLContext, error) {
-	spec, _ := tls.UTLSIdToSpec(tls.HelloChrome_100)
+	spec, _ := tls.UTLSIdToSpec(tls.HelloFirefox_102)
 	spec.TLSVersMax = protocol
 	spec.TLSVersMin = tls.VersionTLS10
 	return newSSLContext(&spec), nil

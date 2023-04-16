@@ -5,6 +5,7 @@
 import socket
 import threading
 import codecs
+from asn1crypto.x509 import Certificate
 
 # import selectors2 as selectors
 import utils
@@ -32,6 +33,7 @@ from pyutls import (
     )
 
 class HandleObject:
+    _handle = 0
     def __init__(self, handle):
         self._handle = handle
     
@@ -40,7 +42,8 @@ class HandleObject:
         return self._handle
 
     def __del__(self):
-        close_go_handle(self.handle)
+        if self.handle != 0:
+            close_go_handle(self.handle)
 
     def run(self, fn, *args, **kwargs):
         return fn(self.handle, *args, **kwargs)
@@ -59,7 +62,8 @@ class SSLContext(HandleObject):
         self.logger = logger
         self.context = self
         self.support_http2 = support_http2
-        handle = new_ssl_context(protocol)
+        fingerprint_id = 772
+        handle = new_ssl_context(fingerprint_id)
         HandleObject.__init__(self, handle)
         # super(SSLContext, self).__init__(handle)
 
@@ -115,12 +119,24 @@ class SSLContext(HandleObject):
 
 
 class SSLConnection(HandleObject):
+    CERT_DELIM = b"|!|!|"
+    @staticmethod
+    def parse_ip(ip_str):
+        ip, port = utils.get_ip_port(ip_str)
+        ip = ip.decode('utf-8')
+        ip_split = ip.split(':')
+        if len(ip_split) > 1:
+            ip = '['+ ':'.join(ip_split[:5]) + ']'
+        return f'{ip}:{port}'
+
+
+    socket_closed = False
     def __init__(self, context : SSLContext, sock, ip_str=None, sni=None, on_close=None):
         self._lock = threading.Lock()
         self._context = context
         self._sock = sock
-        self.ip_str = utils.to_bytes(ip_str)
-        self.sni = sni
+        self.ip_str = self.parse_ip(ip_str)
+        self.sni = sni.decode('utf-8')
         self._makefile_refs = 0
         self._on_close = on_close
         self.peer_cert = None
@@ -135,10 +151,6 @@ class SSLConnection(HandleObject):
         # self.select2.register(sock, selectors.EVENT_WRITE)
 
     def wrap(self):
-        ip, port = utils.get_ip_port(self.ip_str)
-        if isinstance(ip, str):
-            ip = utils.to_bytes(ip)
-
         # try:
         #     self._sock.connect((ip, port))
         # except Exception as e:
@@ -155,7 +167,10 @@ class SSLConnection(HandleObject):
         #     bssl.BSSL_SSL_set_tlsext_host_name(self._connection, utils.to_bytes(self.sni))
 
         # bssl.BSSL_SSL_set_bio(self._connection, bio, bio)
-        handle = new_ssl_connection(self._context.handle, self.ip_str.decode(), self.sni)
+        print(self.ip_str)
+        handle, fd = new_ssl_connection(self._context.handle, self.ip_str, self.sni)
+        self._fileno = fd
+        # print("handle =>", handle)
         HandleObject.__init__(self, handle)
         # if self._context.support_http2:
         #     proto = b"h2"
@@ -187,7 +202,10 @@ class SSLConnection(HandleObject):
 
     @property
     def is_closed(self):
-        return ssl_connection_closed(self.handle)
+        if not self.socket_closed:
+            self.socket_closed = ssl_connection_closed(self.handle)
+        return self.socket_closed
+
 
     def do_handshake(self):
         return self.run(ssl_connection_do_handshake)
@@ -221,9 +239,11 @@ class SSLConnection(HandleObject):
         return ssl_connection_h2_support(self.handle)
 
     def setblocking(self, block):
-        # self._context.logger.debug("%s setblocking: %d", self.ip_str, block)
+        self._context.logger.debug("%s setblocking: %d", self.ip_str, block)
         # self._sock.setblocking(block)
-        raise NotImplementedError()
+        # raise NotImplementedError()
+        # already non blocking
+        return
 
     # def __getattr__(self, attr):
     #     if attr in ('is_support_h2', "_on_close", '_context', '_sock', '_connection', '_makefile_refs',
@@ -233,119 +253,39 @@ class SSLConnection(HandleObject):
     #     elif hasattr(self._connection, attr):
     #         return getattr(self._connection, attr)
 
+
     def get_cert(self):
-        # if self.peer_cert:
-        #     return self.peer_cert
+        if self.peer_cert:
+            return self.peer_cert
+        certs = self.get_peercertificates()
+        self._context.logger.debug("Got %d certificates, using leaf cert with index 0", len(certs))
 
-        # def x509_name_to_string(xname):
-        #     line = bssl.BSSL_X509_NAME_oneline(xname, ffi.NULL, 0)
-        #     return ffi.string(line)
+        cert = certs[0]
+        try:
+            altName = cert.subject_alt_name_value.native
+        except:
+            altName = []
 
-        # with self._lock:
-        #     if self._connection:
-        #         try:
-        #             cert = bssl.BSSL_SSL_get_peer_certificate(self._connection)
-        #             if cert == ffi.NULL:
-        #                 raise Exception("get cert failed")
-
-        #             alt_names_p = bssl.get_alt_names(cert)
-        #             if alt_names_p == ffi.NULL:
-        #                 raise Exception("get alt_names failed")
-
-        #             alt_names = utils.to_str(ffi.string(alt_names_p))
-        #             bssl.free(alt_names_p)
-
-        #             subject = x509_name_to_string(bssl.BSSL_X509_get_subject_name(cert))
-        #             issuer = x509_name_to_string(bssl.BSSL_X509_get_issuer_name(cert))
-        #             altName = alt_names.split(";")
-        #         except Exception as e:
-        #             subject = ""
-        #             issuer = ""
-        #             altName = []
-
-        # self.peer_cert = {
-        #     "cert": subject,
-        #     "issuer_commonname": issuer,
-        #     "commonName": "",
-        #     "altName": altName
-        # }
-
-        cert_bytes = self.run(ssl_connection_leaf_cert)
-        # cert, subject, commonname, issuer,  issuer_commonname, altNames =  cert_bytes.split(b"|!")
-        # self.peer_cert = {
-        #     "cert": cert,
-        #     "subject": subject,
-        #     'issuer': issuer,
-        #     "issuer_commonname": issuer_commonname,
-        #     "commonName": commonname,
-        #     "altName": altNames.split(b";!")
-        # }
-
-
-        subject, commonname, issuer,  issuer_commonname, altNames =  cert_bytes.decode("utf-8").split("|!")
         self.peer_cert = {
-            "cert": subject,
-            'issuer': issuer,
-            "issuer_commonname": issuer_commonname,
-            "commonName": commonname,
-            "altName": altNames.split(";!")
+            "cert": cert,
+            "issuer_commonname": cert.issuer.human_friendly,
+            "commonName": "",
+            "altName": altName
         }
 
         return self.peer_cert
 
+    def get_peercertificates(self):
+        cert_bytes = self.run(ssl_connection_leaf_cert)
+        cert_arr = cert_bytes.split(self.CERT_DELIM)
+        return tuple(map(Certificate.load, cert_arr))
+
+
+
     def send(self, data, flags=0):
-        # with self._lock:
-        #     if not self._connection:
-        #         e = socket.error(5)
-        #         e.errno = 5
-        #         raise e
-
-        #     try:
-        #         while True:
-        #             # self._context.logger.debug("%s send %d ", self.ip_str, len(data))
-        #             ret = bssl.BSSL_SSL_write(self._connection, data, len(data))
-        #             if ret <= 0:
-        #                 errno = bssl.BSSL_SSL_get_error(self._connection, ret)
-        #                 if errno not in [2, 3, ]:
-        #                     # self._context.logger.warn("send n:%d errno: %d ip:%s", ret, errno, self.ip_str)
-        #                     e = socket.error(errno)
-        #                     e.errno = errno
-        #                     raise e
-        #                 else:
-        #                     # self._context.logger.debug("send n:%d errno: %d ip:%s", ret, errno, self.ip_str)
-        #                     self.select2.select(timeout=self.timeout)
-        #                     continue
-        #             else:
-        #                 break
-
-        #         return ret
-        #     except Exception as e:
-        #         self._context.logger.exception("ssl send:%r", e)
-        #         raise e
         return ssl_connection_write(self.handle, data)
 
     def recv(self, bufsiz, flags=0):
-        # with self._lock:
-        #     if not self._connection:
-        #         e = socket.error(2)
-        #         e.errno = 5
-        #         raise e
-
-        #     bufsiz = min(16*1024, bufsiz)
-        #     buf = bytes(bufsiz)
-        #     # t0 = time.time()
-        #     n = bssl.BSSL_SSL_read(self._connection, buf, bufsiz)
-        #     # t2 = time.time()
-        #     # self._context.logger.debug("%s read: %d t:%f", self.ip_str, n, t2 - t0)
-        #     if n <= 0:
-        #         errno = bssl.BSSL_SSL_get_error(self._connection, n)
-        #         # self._context.logger.warn("recv n:%d errno: %d ip:%s", n, errno, self.ip_str)
-        #         e = socket.error(errno)
-        #         e.errno = errno
-        #         raise e
-
-        #     dat = bytes(buf[:n])
-        #     return dat
         return ssl_connection_read(self.handle, bufsiz)
 
     def recv_into(self, buf, nbytes=None):
@@ -356,7 +296,6 @@ class SSLConnection(HandleObject):
         n = len(dat)
         buf[:n] = dat
         return n
-        # raise NotImplementedError()
 
     def read(self, bufsiz, flags=0):
         return self.recv(bufsiz, flags)
@@ -365,32 +304,29 @@ class SSLConnection(HandleObject):
         return self.send(buf, flags)
 
     def close(self):
-        # with self._lock:
-        #     self.running = False
-        #     if not self.socket_closed:
-        #         if self._connection:
-        #             bssl.BSSL_SSL_shutdown(self._connection)
+        ret = None
+        with self._lock:
+            self.running = False
+            if not self.socket_closed:
+                if self.handle:
+                    ret = ssl_connection_close(self.handle)
 
-        #         self.socket_closed = True
-        #         if self._on_close:
-        #             self._on_close(self.ip_str)
-        return ssl_connection_close(self.handle)
+                self.socket_closed = True
+                if self._on_close:
+                    self._on_close(self.ip_str)
+        return ret
 
     def __del__(self):
         self.close()
-        # if self._connection:
-        #     bssl.BSSL_SSL_free(self._connection)
-        #     self._connection = None
-        # self._sock = None
 
     def settimeout(self, t):
         if not self.running:
             return
 
-        if self.timeout != t:
-            # self._context.logger.debug("settimeout %d", t)
-            self._sock.settimeout(t)
-            self.timeout = t
+        # if self.timeout != t:
+        #     # self._context.logger.debug("settimeout %d", t)
+        #     self._sock.settimeout(t)
+        #     self.timeout = t
 
     def makefile(self, mode='r', bufsize=-1):
         self._makefile_refs += 1

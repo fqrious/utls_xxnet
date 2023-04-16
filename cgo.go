@@ -8,16 +8,25 @@ package main
 #include <stdlib.h>
 #include "cgo.h"
 
+// for duplicate_fd
+#include <fcntl.h>
+#include <unistd.h>
 
+ssize_t duplicate_fd(ssize_t fd);
+
+PyObject* ssl_connection_return(ssize_t handle, ssize_t fd);
 
 */
 import "C"
 import (
+	"bytes"
 	"fmt"
-	"strings"
+	"net"
 	"unsafe"
+)
 
-	tls "github.com/refraction-networking/utls"
+var (
+	CERT_DELIM = []byte("|!|!|")
 )
 
 //export build_bytes
@@ -26,6 +35,7 @@ func build_bytes(b []byte) *C.PyObject {
 		panic("string too large")
 	}
 	p := C.malloc(C.size_t(len(b)))
+	defer C.free(p)
 	sliceHeader := struct {
 		p   unsafe.Pointer
 		len int
@@ -35,6 +45,16 @@ func build_bytes(b []byte) *C.PyObject {
 	copy(b_temp, b) // to be removed since python actually copies the memory
 	val := (*C.char)(p)
 	return C.PyBytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
+}
+
+//export build_bytes_no_copy
+func build_bytes_no_copy(b []byte) *C.PyObject {
+	// b_temp := *(*[]byte)(unsafe.Pointer(&sliceHeader))
+	// copy(b_temp, b) // to be removed since python actually copies the memory
+	data := unsafe.SliceData(b)
+	val := (*C.char)(unsafe.Pointer(data))
+	return C.PyBytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
+	// return nil
 }
 
 func pointer_as_slice[T any](p unsafe.Pointer, length int) []T {
@@ -86,14 +106,30 @@ func handleError(e error) {
 // }
 
 //export go_new_ssl_connection
-func go_new_ssl_connection(ctxptr uintptr, address, sni *C.char) uintptr {
+func go_new_ssl_connection(ctxptr uintptr, address, sni *C.char) *C.PyObject {
 	ctx := Handle[*SSLContext](ctxptr).Value()
 	s, err := NewSSLConnection(ctx, 0, C.GoString(address), C.GoString(sni))
 	if err != nil {
 		handleError(err)
+		return nil
+	}
+	fd := duplicate_fd((s.conn.GetUnderlyingConn()))
+	if fd != 0 {
+		handle := NewHandle[any](s).Ptr()
+		return C.ssl_connection_return(C.ssize_t(handle), fd)
+	}
+	return nil
+}
+
+func duplicate_fd(conn net.Conn) C.ssize_t {
+	f, err := conn.(*net.TCPConn).File()
+	if err != nil {
+		handleError(err)
 		return 0
 	}
-	return NewHandle[any](s).Ptr()
+	defer f.Close()
+	return C.duplicate_fd(C.ssize_t(f.Fd()))
+
 }
 
 //export go_ssl_connection_read
@@ -104,7 +140,7 @@ func go_ssl_connection_read(cptr uintptr, size uint32) *C.PyObject {
 		handleError(err)
 		return nil
 	}
-	return build_bytes(bytes)
+	return build_bytes_no_copy(bytes)
 }
 
 //export go_ssl_connection_write
@@ -153,14 +189,23 @@ func go_ssl_connection_get_cert(cptr uintptr) *C.PyObject {
 		handleError(fmt.Errorf("len(peer_certificates) is 0"))
 		return nil
 	}
-	cert := state.PeerCertificates[0]
-	subject := cert.Subject.String()
-	commonName := cert.Subject.CommonName
-	issuer := cert.Issuer.String()
-	issuerName := cert.Issuer.CommonName
-	altNames := cert.DNSNames
-	ret_list := []string{subject, commonName, issuer, issuerName, strings.Join(altNames, ";!")}
-	return build_bytes([]byte(strings.Join(ret_list, "|!")))
+	certs := state.PeerCertificates
+	// leaf_cert := certs[0]
+	// return build_bytes_no_copy(leaf_cert.Raw)
+
+	// subject := cert.Subject.String()
+	// commonName := cert.Subject.CommonName
+	// issuer := cert.Issuer.String()
+	// issuerName := cert.Issuer.CommonName
+	// altNames := cert.DNSNames
+	// ret_list := []string{subject, commonName, issuer, issuerName, strings.Join(altNames, ";!")}
+	// return build_bytes([]byte(strings.Join(ret_list, "|!")))
+	certs_raws := make([][]byte, 0, len(certs))
+	for _, cert := range certs {
+		certs_raws = append(certs_raws, cert.Raw)
+	}
+	return build_bytes_no_copy(bytes.Join(certs_raws, CERT_DELIM))
+
 }
 
 //export go_ssl_connection_close
@@ -226,25 +271,25 @@ func go_clear_handle(hptr uintptr) {
 func init2() {
 
 	/////////
-	ctx := go_new_ssl_context(tls.VersionTLS13)
-	c := go_new_ssl_connection(ctx, C.CString("google.com:443"), C.CString("www.google.com"))
-	send_buf := build_bytes([]byte("HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n"))
-	go_ssl_connection_write(c, send_buf)
-	pybuf := go_ssl_connection_read(c, 1024)
-	buf := py2go_bytes(pybuf, true)
-	fmt.Println("<==========> Response <==========>", "\n", string(buf))
+	// ctx := go_new_ssl_context(tls.VersionTLS13)
+	// c := go_new_ssl_connection(ctx, C.CString("google.com:443"), C.CString("www.google.com"))
+	// send_buf := build_bytes([]byte("HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n"))
+	// go_ssl_connection_write(c, send_buf)
+	// pybuf := go_ssl_connection_read(c, 1024)
+	// buf := py2go_bytes(pybuf, true)
+	// fmt.Println("<==========> Response <==========>", "\n", string(buf))
 
 }
 
 func main() {
 
 	/////////
-	ctx := go_new_ssl_context(tls.VersionTLS13)
-	c := go_new_ssl_connection(ctx, C.CString("google.com:443"), C.CString("www.google.com"))
-	send_buf := build_bytes([]byte("yes"))
-	go_ssl_connection_write(c, send_buf)
-	pybuf := go_ssl_connection_read(c, 1024)
-	buf := py2go_bytes(pybuf, true)
-	fmt.Println("<==========> Response <==========>", "\n", string(buf))
+	// ctx := go_new_ssl_context(tls.VersionTLS13)
+	// c := go_new_ssl_connection(ctx, C.CString("google.com:443"), C.CString("www.google.com"))
+	// send_buf := build_bytes([]byte("yes"))
+	// go_ssl_connection_write(c, send_buf)
+	// pybuf := go_ssl_connection_read(c, 1024)
+	// buf := py2go_bytes(pybuf, true)
+	// fmt.Println("<==========> Response <==========>", "\n", string(buf))
 
 }

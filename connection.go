@@ -55,8 +55,8 @@ func (sc *SSLConnection) wrap() error {
 
 func (sc *SSLConnection) Recv(bufsize uint32) ([]byte, error) {
 	data := make([]byte, bufsize)
-	_, err := sc.conn.Read(data)
-	return data, err
+	length, err := sc.conn.Read(data)
+	return data[:length], err
 }
 
 func (sc *SSLConnection) Send(buf []byte) (int, error) {
