@@ -62,8 +62,8 @@ class SSLContext(HandleObject):
         self.logger = logger
         self.context = self
         self.support_http2 = support_http2
-        fingerprint_id = 772
-        handle = new_ssl_context(fingerprint_id)
+        tls_ver = 772
+        handle = new_ssl_context(tls_ver, support_http2)
         HandleObject.__init__(self, handle)
         # super(SSLContext, self).__init__(handle)
 

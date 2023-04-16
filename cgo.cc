@@ -22,9 +22,10 @@ extern "C"
     static PyObject *new_ssl_context(PyObject *self, PyObject *args)
     {
         uint16_t protocol;
-        if (!PyArg_ParseTuple(args, "H", &protocol))
+        int with_alpn;
+        if (!PyArg_ParseTuple(args, "Hp", &protocol, &with_alpn))
             return NULL;
-        auto ctx = go_new_ssl_context(protocol);
+        auto ctx = go_new_ssl_context(protocol, with_alpn);
         return PyLong_FromLong(ctx);
     }
 

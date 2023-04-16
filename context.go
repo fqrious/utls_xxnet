@@ -25,12 +25,28 @@ func (ctx *SSLContext) WrapSocket(socket net.Conn) (*tls.UConn, error) {
 	return conn, err
 }
 
-func NewSSLContext(protocol uint16) (*SSLContext, error) {
-	spec, _ := tls.UTLSIdToSpec(tls.HelloFirefox_102)
+func NewSSLContext(protocol uint16, with_alpn bool) (*SSLContext, error) {
+	var spec tls.ClientHelloSpec
+	if with_alpn {
+		spec, _ = tls.UTLSIdToSpec(tls.HelloRandomizedALPN)
+	} else {
+		spec, _ = tls.UTLSIdToSpec(tls.HelloRandomizedNoALPN)
+	}
 	spec.TLSVersMax = protocol
 	spec.TLSVersMin = tls.VersionTLS10
 	return newSSLContext(&spec), nil
 }
+
+// func setVersMax(spec tls.ClientHelloSpec, ver uint16){
+// // 	spec.TLSVersMax = ver
+// // 	for _, ext := range spec.Extensions{
+// // 		if ext2, ok := ext.(*tls.SupportedVersionsExtension); ok{
+// // 			ext2.Versions = make
+// // 		}
+// // 	}
+// 	r, _ := tls.NewRoller()
+// 	r.
+// }
 
 func newSSLContext(spec *tls.ClientHelloSpec) *SSLContext {
 	return &SSLContext{

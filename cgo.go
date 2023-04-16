@@ -241,8 +241,8 @@ func go_delete_handle(hptr uintptr) bool {
 }
 
 //export go_new_ssl_context
-func go_new_ssl_context(protocol uint16) uintptr {
-	ctx, err := NewSSLContext(protocol)
+func go_new_ssl_context(protocol uint16, with_alpn bool) uintptr {
+	ctx, err := NewSSLContext(protocol, with_alpn)
 	if err != nil {
 		handleError(err)
 		return 0
