@@ -40,7 +40,11 @@ extern "C"
         Py_XDECREF(bytes);
         return PyLong_FromLong(ctx);
     }
-
+    void py_set_error(char* err){
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        PyErr_SetString(PyExc_RuntimeError, err);
+        PyGILState_Release(gstate);
+    }
     static PyObject *ssl_connection_read(PyObject *self, PyObject *args)
     {
         int read_size;
@@ -48,9 +52,9 @@ extern "C"
         PyObject* bytes;
         if (!PyArg_ParseTuple(args, "ni", &ctxptr, &read_size))
             return NULL;
-        // Py_BEGIN_ALLOW_THREADS
+        Py_BEGIN_ALLOW_THREADS
         bytes = go_ssl_connection_read(ctxptr, read_size);
-        // Py_END_ALLOW_THREADS
+        Py_END_ALLOW_THREADS
         return bytes;
     }
 
@@ -60,7 +64,10 @@ extern "C"
         GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "nS", &ctxptr, &bytes))
             return NULL;
-        auto len = go_ssl_connection_write(ctxptr, bytes);
+        int len;
+        Py_BEGIN_ALLOW_THREADS
+        len = go_ssl_connection_write(ctxptr, bytes);
+        Py_END_ALLOW_THREADS
         return PyLong_FromLong(len);
     }
 
@@ -70,7 +77,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool h2_support = go_ssl_connection_h2_support(ctxptr);
-        return PyBool_FromBool(h2_support);
+        return py_bool_from_bool(h2_support);
     }
 
 
@@ -91,8 +98,23 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_close(ctxptr, close_context);
-        return PyBool_FromBool(closed);
+        return py_bool_from_bool(closed);
     }
+
+
+        static PyObject *ssl_connection_set_timeout(PyObject *self, PyObject *args)
+    {
+        // const char **kw = {"close_context",NULL};
+        bool close_context = true;
+        GoHandle ctxptr;
+        int readTimeout, writeTimeout;
+        if (!PyArg_ParseTuple(args, "nii", &ctxptr, &readTimeout, &writeTimeout))
+            return NULL;
+        go_ssl_connection_set_timeout(ctxptr, readTimeout, writeTimeout);
+        Py_RETURN_NONE;
+    }
+
+
 
         static PyObject *ssl_connection_closed(PyObject *self, PyObject *args)
     {
@@ -100,7 +122,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_closed(ctxptr);
-        return PyBool_FromBool(closed);
+        return py_bool_from_bool(closed);
     }
 
         static PyObject *ssl_connection_do_handshake(PyObject *self, PyObject *args)
@@ -108,8 +130,11 @@ extern "C"
         GoHandle ctxptr;
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
-        bool done = go_ssl_connection_do_handshake(ctxptr);
-        return PyBool_FromBool(done);
+        bool done;
+        Py_BEGIN_ALLOW_THREADS
+        done = go_ssl_connection_do_handshake(ctxptr);
+        Py_END_ALLOW_THREADS
+        return py_bool_from_bool(done);
     }
 
         static PyObject *close_go_handle(PyObject *self, PyObject *args)
@@ -118,7 +143,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_delete_handle(ctxptr);
-        return PyBool_FromBool(closed);
+        return py_bool_from_bool(closed);
     }
 
     static PyMethodDef functions[] = {
@@ -131,6 +156,7 @@ extern "C"
         {"ssl_connection_closed", ssl_connection_closed, METH_VARARGS, "Check if SSLConnection is closed"},
         {"ssl_connection_h2_support", ssl_connection_h2_support, METH_VARARGS, "Check if SSLConnection supports h2"},
         {"ssl_connection_leaf_cert", ssl_connection_leaf_cert, METH_VARARGS, "Check if SSLConnection supports h2"},
+        {"ssl_connection_set_timeout", ssl_connection_set_timeout, METH_VARARGS, "Check if SSLConnection supports h2"},
 
         // ssl_context
         {"new_ssl_context_from_bytes", new_ssl_context_from_bytes, METH_VARARGS, "Create a new SSLContext"},

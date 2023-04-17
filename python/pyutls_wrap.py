@@ -23,6 +23,7 @@ from pyutls import (
     ssl_connection_closed,
     ssl_connection_do_handshake,
     ssl_connection_leaf_cert,
+    ssl_connection_set_timeout,
     
     #  context functions
     new_ssl_context,
@@ -65,41 +66,6 @@ class SSLContext(HandleObject):
         tls_ver = 772
         handle = new_ssl_context(tls_ver, support_http2)
         HandleObject.__init__(self, handle)
-        # super(SSLContext, self).__init__(handle)
-
-        # method = bssl.BSSL_TLS_method()
-        # self.ctx = bssl.BSSL_SSL_CTX_new(method)
-        # self.support_http2 = support_http2
-        # bssl.BSSL_SSL_CTX_set_grease_enabled(self.ctx, 1)
-
-        # cmd = b"ALL:!aPSK:!ECDSA+SHA1:!3DES"
-        # bssl.BSSL_SSL_CTX_set_cipher_list(self.ctx, cmd)
-
-        # if support_http2:
-        #     alpn = b""
-        #     for proto in [b"h2", b"http/1.1"]:
-        #         proto_len = len(proto)
-        #         alpn += proto_len.to_bytes(1, 'big') + proto
-        #     bssl.BSSL_SSL_CTX_set_alpn_protos(self.ctx, alpn, len(alpn))
-        # bssl.BSSL_SSL_CTX_enable_ocsp_stapling(self.ctx)
-        # bssl.BSSL_SSL_CTX_enable_signed_cert_timestamps(self.ctx)
-
-        # SSL_SIGN_ECDSA_SECP256R1_SHA256, SSL_SIGN_RSA_PSS_RSAE_SHA256,
-        # SSL_SIGN_RSA_PKCS1_SHA256,       SSL_SIGN_ECDSA_SECP384R1_SHA384,
-        # SSL_SIGN_RSA_PSS_RSAE_SHA384,    SSL_SIGN_RSA_PKCS1_SHA384,
-        # SSL_SIGN_RSA_PSS_RSAE_SHA512,    SSL_SIGN_RSA_PKCS1_SHA512,
-        # algs = [0x0403, 0x0804, 0x0401, 0x0503, 0x0805, 0x0501, 0x0806, 0x0601]
-        # algs_buf = ffi.new("uint16_t[%s]" % (len(algs)))
-        # i = 0
-        # for alg in algs:
-        #     algs_buf[i] = alg
-        #     i += 1
-        # cdata_ptr = ffi.cast("uint16_t *", algs_buf)
-        # bssl.BSSL_SSL_CTX_set_verify_algorithm_prefs(self.ctx, cdata_ptr, len(algs))
-
-        # bssl.BSSL_SSL_CTX_set_min_proto_version(self.ctx, 0x0303)
-
-        # bssl.SetCompression(self.ctx)
     
     @classmethod
     def from_bytes(cls, logger, raw_bytes : bytes=None, hex:str=None):
@@ -135,8 +101,9 @@ class SSLConnection(HandleObject):
         self._lock = threading.Lock()
         self._context = context
         self._sock = sock
-        self.ip_str = self.parse_ip(ip_str)
-        self.sni = sni.decode('utf-8')
+        self.ip_port = self.parse_ip(ip_str)
+        self.ip_str = utils.to_bytes(ip_str)
+        self.sni = utils.to_bytes(sni)
         self._makefile_refs = 0
         self._on_close = on_close
         self.peer_cert = None
@@ -167,8 +134,7 @@ class SSLConnection(HandleObject):
         #     bssl.BSSL_SSL_set_tlsext_host_name(self._connection, utils.to_bytes(self.sni))
 
         # bssl.BSSL_SSL_set_bio(self._connection, bio, bio)
-        print(self.ip_str)
-        handle, fd = new_ssl_connection(self._context.handle, self.ip_str, self.sni)
+        handle, fd = new_ssl_connection(self._context.handle, self.ip_port, self.sni.decode('utf-8'))
         self._fileno = fd
         # print("handle =>", handle)
         HandleObject.__init__(self, handle)
@@ -319,14 +285,16 @@ class SSLConnection(HandleObject):
     def __del__(self):
         self.close()
 
-    def settimeout(self, t):
+    def settimeout(self, rtimeout, wtimeout=None):
         if not self.running:
             return
 
-        # if self.timeout != t:
-        #     # self._context.logger.debug("settimeout %d", t)
-        #     self._sock.settimeout(t)
-        #     self.timeout = t
+        if wtimeout == None:
+            wtimeout = rtimeout
+        if self.timeout != rtimeout:
+            self._context.logger.debug("settimeout %d", rtimeout)
+            self.run(ssl_connection_set_timeout, rtimeout, wtimeout)
+            self.timeout = rtimeout
 
     def makefile(self, mode='r', bufsize=-1):
         self._makefile_refs += 1

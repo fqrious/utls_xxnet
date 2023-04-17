@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"time"
 	"unsafe"
 )
 
@@ -95,7 +96,7 @@ func handleError(e error) {
 	if e != nil {
 		estr := C.CString(e.Error())
 		defer C.free(unsafe.Pointer(estr))
-		C.PyErr_SetString(C.PyExc_RuntimeError, estr)
+		C.py_set_error(estr)
 	}
 }
 
@@ -164,6 +165,13 @@ func go_ssl_connection_do_handshake(cptr uintptr) bool {
 		return false
 	}
 	return true
+}
+
+//export go_ssl_connection_set_timeout
+func go_ssl_connection_set_timeout(cptr uintptr, readTimeout, writeTimeout int) {
+	c := Handle[*SSLConnection](cptr).Value()
+	c.readTimeout = time.Duration(readTimeout)
+	c.writeTimeout = time.Duration(writeTimeout)
 }
 
 //export go_ssl_connection_h2_support

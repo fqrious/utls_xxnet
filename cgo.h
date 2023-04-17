@@ -16,7 +16,7 @@ static inline void DECREF(PyObject* obj){
 	Py_XDECREF(obj);
 }
 
-inline PyObject* PyBool_FromBool(bool truth){
+inline PyObject* py_bool_from_bool(bool truth){
 	if (truth)
         Py_RETURN_TRUE;
 	else
@@ -34,6 +34,8 @@ struct ssl_connection
 struct ssl_context{
 	size_t handle;
 };
+
+void py_set_error(char* err);
 
 
 #ifdef __cplusplus

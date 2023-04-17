@@ -50,8 +50,10 @@ func NewSSLContext(protocol uint16, with_alpn bool) (*SSLContext, error) {
 
 func newSSLContext(spec *tls.ClientHelloSpec) *SSLContext {
 	return &SSLContext{
-		spec:   spec,
-		config: &tls.Config{},
+		spec: spec,
+		config: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 	}
 }
 

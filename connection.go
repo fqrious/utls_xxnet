@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"os"
+	"time"
 
 	tls "github.com/refraction-networking/utls"
 )
@@ -16,11 +17,13 @@ func (fd FD) FDtoConn() (net.Conn, error) {
 }
 
 type SSLConnection struct {
-	conn    *tls.UConn
-	ctx     *SSLContext
-	sock    net.Conn
-	address string
-	sni     string
+	conn         *tls.UConn
+	ctx          *SSLContext
+	sock         net.Conn
+	address      string
+	sni          string
+	readTimeout  time.Duration
+	writeTimeout time.Duration
 }
 
 func NewSSLConnection(ctx *SSLContext, sockfd FD, address, sni string) (*SSLConnection, error) {
@@ -30,10 +33,12 @@ func NewSSLConnection(ctx *SSLContext, sockfd FD, address, sni string) (*SSLConn
 		return nil, err
 	}
 	self := &SSLConnection{
-		ctx:     ctx,
-		sock:    sock,
-		address: address,
-		sni:     sni,
+		ctx:          ctx,
+		sock:         sock,
+		address:      address,
+		sni:          sni,
+		readTimeout:  0,
+		writeTimeout: 0,
 	}
 
 	if err = self.wrap(); err != nil {
@@ -54,6 +59,9 @@ func (sc *SSLConnection) wrap() error {
 }
 
 func (sc *SSLConnection) Recv(bufsize uint32) ([]byte, error) {
+	if sc.readTimeout != 0 {
+		sc.conn.SetReadDeadline(time.Now().Add(sc.readTimeout))
+	}
 	data := make([]byte, bufsize)
 	length, err := sc.conn.Read(data)
 	return data[:length], err
@@ -61,5 +69,8 @@ func (sc *SSLConnection) Recv(bufsize uint32) ([]byte, error) {
 
 func (sc *SSLConnection) Send(buf []byte) (int, error) {
 	// data := make([]byte, bufsize)
+	if sc.writeTimeout != 0 {
+		sc.conn.SetWriteDeadline(time.Now().Add(sc.writeTimeout))
+	}
 	return sc.conn.Write(buf)
 }
