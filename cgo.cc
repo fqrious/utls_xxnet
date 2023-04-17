@@ -40,11 +40,6 @@ extern "C"
         Py_XDECREF(bytes);
         return PyLong_FromLong(ctx);
     }
-    void py_set_error(char* err){
-        PyGILState_STATE gstate = PyGILState_Ensure();
-        PyErr_SetString(PyExc_RuntimeError, err);
-        PyGILState_Release(gstate);
-    }
     static PyObject *ssl_connection_read(PyObject *self, PyObject *args)
     {
         int read_size;

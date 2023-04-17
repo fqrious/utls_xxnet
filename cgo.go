@@ -7,6 +7,7 @@ package main
 
 #include <stdlib.h>
 #include "cgo.h"
+#include "safepy.h"
 
 // for duplicate_fd
 #include <fcntl.h>
@@ -45,7 +46,7 @@ func build_bytes(b []byte) *C.PyObject {
 	b_temp := *(*[]byte)(unsafe.Pointer(&sliceHeader))
 	copy(b_temp, b) // to be removed since python actually copies the memory
 	val := (*C.char)(p)
-	return C.PyBytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
+	return C.safepy_Bytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
 }
 
 //export build_bytes_no_copy
@@ -54,7 +55,7 @@ func build_bytes_no_copy(b []byte) *C.PyObject {
 	// copy(b_temp, b) // to be removed since python actually copies the memory
 	data := unsafe.SliceData(b)
 	val := (*C.char)(unsafe.Pointer(data))
-	return C.PyBytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
+	return C.safepy_Bytes_FromStringAndSize(val, C.Py_ssize_t(len(b)))
 	// return nil
 }
 
@@ -76,7 +77,7 @@ func py2go_bytes(pybuf *C.PyObject, shouldCopy bool) []byte {
 		bufptr *C.char
 		length C.Py_ssize_t
 	)
-	C.PyBytes_AsStringAndSize(pybuf, &bufptr, &length)
+	C.safepy_Bytes_AsStringAndSize(pybuf, &bufptr, &length)
 	pybuf_slice := pointer_as_slice[byte](unsafe.Pointer(bufptr), int(length))
 	if shouldCopy {
 		buf := make([]byte, length)

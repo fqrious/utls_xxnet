@@ -35,16 +35,17 @@ ldflags = get_library_path() + " " + sysconfig.get_config_var('LDFLAGS')
 # sys.exit(0)
 def get_ld_flags():
     cmd = sysconfig.get_config_var('LDSHARED')
-    if cmd.startswith('clang') or cmd.startswith('g++') or cmd.startswith('gcc'):
+    exe = cmd.split(' ', 1)[0]
+    if 'clang' in exe or 'g++' in exe or 'gcc' in exe:
         return ' '.join(cmd.split(' ')[2:])
-    raise Exception('Unsupported compiler/os')
+    raise Exception('Unsupported compiler/os: %s'%exe)
 
 cflags += ' ' + os.environ.get("CFLAGS", '')
-ldflags += ' ' + os.environ.get("LDFLAGS", '')
+env_ldflags = ' ' + os.environ.get("LDFLAGS", '')
 print(ldflags, cflags, "|", sysconfig.get_config_var('LDFLAGS'))
 os.environ['CGO_CFLAGS']   = cflags
 os.environ['CGO_CXXFLAGS'] = cflags
-os.environ['CGO_LDFLAGS']  = get_ld_flags()
+os.environ['CGO_LDFLAGS']  = get_ld_flags() + env_ldflags 
 # os.environ['CC']  = sysconfig.get_config_var('LDSHARED')
 # os.environ['CXX'] = sysconfig.get_config_var('LDCXXSHARED')
 
