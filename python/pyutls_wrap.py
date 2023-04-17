@@ -96,6 +96,7 @@ class SSLConnection(HandleObject):
         return f'{ip}:{port}'
 
 
+    timeout = 10
     socket_closed = False
     def __init__(self, context : SSLContext, sock, ip_str=None, sni=None, on_close=None):
         self._lock = threading.Lock()

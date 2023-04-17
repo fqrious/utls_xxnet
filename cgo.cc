@@ -5,6 +5,7 @@ extern "C"
 
 #include <Python.h>
 #include "cgo.h"
+#include "safepy.h"
 #include "_cgo_export.h"
 
     typedef size_t GoHandle;
@@ -38,7 +39,7 @@ extern "C"
         Py_XINCREF(bytes);
         auto ctx = go_new_ssl_context_from_bytes(bytes, blunt, padding);
         Py_XDECREF(bytes);
-        return PyLong_FromLong(ctx);
+        SAFEPY_Return(PyLong_FromLong(ctx));
     }
     static PyObject *ssl_connection_read(PyObject *self, PyObject *args)
     {
@@ -50,7 +51,7 @@ extern "C"
         Py_BEGIN_ALLOW_THREADS
         bytes = go_ssl_connection_read(ctxptr, read_size);
         Py_END_ALLOW_THREADS
-        return bytes;
+        SAFEPY_Return(bytes);
     }
 
     static PyObject *ssl_connection_write(PyObject *self, PyObject *args)
@@ -63,7 +64,7 @@ extern "C"
         Py_BEGIN_ALLOW_THREADS
         len = go_ssl_connection_write(ctxptr, bytes);
         Py_END_ALLOW_THREADS
-        return PyLong_FromLong(len);
+        SAFEPY_Return(PyLong_FromLong(len));
     }
 
     static PyObject *ssl_connection_h2_support(PyObject *self, PyObject *args)
@@ -72,7 +73,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool h2_support = go_ssl_connection_h2_support(ctxptr);
-        return py_bool_from_bool(h2_support);
+        SAFEPY_Return(py_bool_from_bool(h2_support));
     }
 
 
@@ -82,7 +83,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         PyObject * leaf_cert = go_ssl_connection_get_cert(ctxptr);
-        return leaf_cert;
+        SAFEPY_Return(leaf_cert);
     }
 
         static PyObject *ssl_connection_close(PyObject *self, PyObject *args)
@@ -93,7 +94,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_close(ctxptr, close_context);
-        return py_bool_from_bool(closed);
+        SAFEPY_Return(py_bool_from_bool(closed));
     }
 
 
@@ -106,7 +107,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "nii", &ctxptr, &readTimeout, &writeTimeout))
             return NULL;
         go_ssl_connection_set_timeout(ctxptr, readTimeout, writeTimeout);
-        Py_RETURN_NONE;
+        SAFEPY_Return(Py_NewRef(Py_None));
     }
 
 
@@ -117,7 +118,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_closed(ctxptr);
-        return py_bool_from_bool(closed);
+        SAFEPY_Return(py_bool_from_bool(closed));
     }
 
         static PyObject *ssl_connection_do_handshake(PyObject *self, PyObject *args)
@@ -129,7 +130,7 @@ extern "C"
         Py_BEGIN_ALLOW_THREADS
         done = go_ssl_connection_do_handshake(ctxptr);
         Py_END_ALLOW_THREADS
-        return py_bool_from_bool(done);
+        SAFEPY_Return(py_bool_from_bool(done));
     }
 
         static PyObject *close_go_handle(PyObject *self, PyObject *args)
@@ -138,7 +139,7 @@ extern "C"
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_delete_handle(ctxptr);
-        return py_bool_from_bool(closed);
+        SAFEPY_Return(py_bool_from_bool(closed));
     }
 
     static PyMethodDef functions[] = {

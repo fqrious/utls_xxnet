@@ -171,8 +171,8 @@ func go_ssl_connection_do_handshake(cptr uintptr) bool {
 //export go_ssl_connection_set_timeout
 func go_ssl_connection_set_timeout(cptr uintptr, readTimeout, writeTimeout int) {
 	c := Handle[*SSLConnection](cptr).Value()
-	c.readTimeout = time.Duration(readTimeout)
-	c.writeTimeout = time.Duration(writeTimeout)
+	c.readTimeout = time.Duration(readTimeout) * time.Second
+	c.writeTimeout = time.Duration(writeTimeout) * time.Second
 }
 
 //export go_ssl_connection_h2_support
