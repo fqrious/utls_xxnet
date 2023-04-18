@@ -2,7 +2,9 @@
 # Which is used by ip manager
 #  ip manager keep a connection number counter for every ip.
 
+import os
 import socket
+import selectors
 import threading
 import codecs
 from asn1crypto.x509 import Certificate
@@ -104,6 +106,7 @@ class SSLConnection(HandleObject):
         self.socket_closed = False
         self.running = True
         self._connection = None
+        
         self.wrap()
 
     def wrap(self):
@@ -116,8 +119,18 @@ class SSLConnection(HandleObject):
             self._context.logger.exception("wrap %s e:%r", self.ip_str, e)
             raise e
 
+        # os.set_blocking(fd, False)
+        # newfd = os.dup(fd)
         self._fileno = fd
         HandleObject.__init__(self, handle)
+
+
+    def __iowait(self, event=selectors.EVENT_READ):
+        selector = selectors.DefaultSelector()
+        select_key = selector.register(self.fileno(), event)
+        events = selector.select(self.timeout)
+        selector.unregister(select_key.fd)
+        return events
 
     @property
     def is_closed(self):
@@ -126,6 +139,9 @@ class SSLConnection(HandleObject):
         return self.socket_closed
 
     def do_handshake(self):
+        events = self.__iowait(selectors.EVENT_WRITE)
+        if not events:
+            raise TimeoutError("Handshake timed out after %s seconds"%self.timeout)
         return self.run(ssl_connection_do_handshake)
 
     def is_support_h2(self):
@@ -162,9 +178,19 @@ class SSLConnection(HandleObject):
         return tuple(map(Certificate.load, cert_arr))
 
     def send(self, data, flags=0):
+        # if len(data) == 0:
+        #     return 0
+        events = self.__iowait(selectors.EVENT_WRITE)
+        if not events:
+            raise TimeoutError("Write timed out after %s seconds"%self.timeout)
         return ssl_connection_write(self.handle, data)
 
     def recv(self, bufsiz, flags=0):
+        if out := ssl_connection_read(self.handle, bufsiz, no_wait=True): #attempt to read what's left in buffer without blocking
+            return out
+        events = self.__iowait(selectors.EVENT_READ)
+        if not events:
+            raise TimeoutError("Read timed out after %s seconds"%self.timeout)
         return ssl_connection_read(self.handle, bufsiz)
 
     def recv_into(self, buf, nbytes=None):
@@ -204,7 +230,7 @@ class SSLConnection(HandleObject):
 
         if self.timeout != t:
             self._context.logger.debug("settimeout %d", t)
-            self.run(ssl_connection_set_timeout, t, t)
+            # self.run(ssl_connection_set_timeout, t, t)
             self.timeout = t
 
         # if self.timeout != t:

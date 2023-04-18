@@ -1,3 +1,4 @@
+import sys, os
 import pyutls
 import codecs, random
 from pyutls_wrap import SSLConnection, SSLContext
@@ -7,37 +8,8 @@ import h2.events
 
 
 logger = getLogger(__name__)
+TIMEOUT = 2
 
-def test1():
-    ctx  = pyutls.new_ssl_context(772)
-    sock = pyutls.new_ssl_connection(ctx, "www.google.com:443", "www.google.com")
-    sock.settimeout(1)
-    print("writing...")
-    pyutls.ssl_connection_write(sock, b"HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n")
-    print("reading...")
-    out = pyutls.ssl_connection_read(sock, 1000)
-    print(len(out), out)
-
-def test2():
-    packet = codecs.decode("1603010200010001fc03034e7b309f8179598f97b0add0a541583bc75324fa0e5c9c61f50e0e8012e8364f20a82353f273ec45d46b1bc8983d7ed611d82b4f4957b34fb0a5b3c141533b71c00022130113031302c02bc02fcca9cca8c02cc030c00ac009c013c014009c009d002f00350100019100000010000e00000b6578616d706c652e636f6d00170000ff01000100000a000e000c001d00170018001901000101000b00020100002300000010000e000c02683208687474702f312e310005000501000000000022000a000804030503060302030033006b0069001d00203aa102ca6f5644cbebdd5252bc3122ef48876ec476acb140913a88645a92402e001700410407f790903a02131e2354a4acdd37a0591ef7c626292afb03800666c65272a8726103da947ef38a27891e025ec409758625c954ea5ec19cc460c59f6d9aa86120002b00050403040303000d0018001604030503060308040805080604010501060102030201002d00020101001c000240010015008b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "hex")
-    print(type(packet), packet[0])
-    ctx  = pyutls.new_ssl_context_from_bytes(True, False, packet)
-    sock = pyutls.new_ssl_connection(ctx, "www.google.com:443", "www.google.com")
-    # h2support = pyutls.ssl_connection_h2_support(sock)
-    # print("Before Handshake, H2 Support =>", h2support)
-    print("writing...")
-    pyutls.ssl_connection_write(sock, b"HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n")
-
-    h2support = pyutls.ssl_connection_h2_support(sock)
-    print("After Handshake, H2 Support =>", h2support)
-
-    # closed = pyutls.ssl_connection_close(sock) #close
-    # print("Closed =>", closed)
-    closed = pyutls.ssl_connection_closed(sock) #close
-    print("Closed =>", closed)
-    print("reading...")
-    out = pyutls.ssl_connection_read(sock, 1000)
-    print(len(out), out)
 
 def test_wrap(ctx, name):
     print("=============>", name, "<=============")
@@ -46,26 +18,31 @@ def test_wrap(ctx, name):
     # print("Before Handshake, H2 Support =>", h2support)
     
     sock.do_handshake()
+    sock.settimeout(TIMEOUT)
     h2support = sock.is_support_h2()
     print("After Handshake, H2 Support =>", h2support)
     cert_bytes = sock.get_cert()
     print("Cert", cert_bytes)
-    if h2support:
-        # print("h2 connection not implemented")
-        write_h2(sock)
-        return
-    write(sock)
-    write(sock)
+    # if h2support:
+    #     # print("h2 connection not implemented")
+    #     write_h2(sock)
+    #     return
+    # sock = sslsock(sock, name)
+    write(sock, h2support)
 
     
 
-def write(sock):
-    print("writing...")
-    sock.send(b"HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n")
-    print("reading...")
-    # out = pyutls.ssl_connection_read(sock, 1000)
-    out =  sock.recv(5000)
-    print(len(out), out)
+def write(sock, is_h2):
+    # try:
+        if is_h2:
+            return write_h2(sock)
+        sock.send(b"HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n")
+        out =  sock.recv(5)
+        out +=  sock.recv(5000)
+        print(len(out), out)
+    # except TimeoutError as e:
+    #     print("error:", e, file=sys.stderr)
+    
 
 def write_h2(sock):
     s = sock
@@ -88,7 +65,7 @@ def write_h2(sock):
     response_stream_ended = False
     while not response_stream_ended:
         # read raw data from the socket
-        data = s.recv(65536 * 1024)
+        data = s.recv(1024*65536)
         if not data:
             break
 
@@ -124,7 +101,8 @@ def  test_wrap_all():
     test_wrap(curl_1_1_context, "curl_1.1_context")
     test_wrap(chrome_context,  "chrome_context")
     for i in range(3):
-        support_h2 = random.choice([True, False])
+        # support_h2 = random.choice([True, False])
+        support_h2 = True
         randomized_context = SSLContext(logger, support_http2=support_h2)
         test_wrap(randomized_context,  f"randomized_context_#{i}")
     # test_wrap(chrome_context,  "chrome_context")
@@ -132,20 +110,66 @@ def  test_wrap_all():
 
     SSLContext.from_bytes(logger, hex=curl_hex)
 
+import selectors
+def iowait(self, event=selectors.EVENT_READ):
+        # if event == selectors.EVENT_READ:
+        #     import select
+        #     while True:
+        #         readable, _, _ = select.select([self], [], [])
+        #         if readable:
+        #             return True
+        selector = selectors.PollSelector()
+        select_key = selector.register(self.fileno(), event)
+        events = selector.select(self.timeout)
+        selector.unregister(select_key.fd)
+        return events
+class sslsock():
+    def __init__(self, sock, context_name) -> None:
+         super().__init__()
+         self.sock = sock
+         self.context_name = context_name
+         self.count = 1
+         self.count2 = 1
+        #  self.fileno = sock.fileno
+    # def __getattribute__(self, __name: str):
+    #     if hasattr(self, __name):
+    #         return super().__getattribute__(__name)
+    #     return getattr(self.sock, __name)
+    def send(self, *args):
+        self.count2 += 1
+        e = iowait(self.sock, selectors.EVENT_WRITE)
+        if len(args[0]) == 0:
+            return 0
+        print("write >>>", self.count2, e, len(args[0]))
+        if not e:
+            raise TimeoutError('write')
+        return self.sock.send(*args)
+    def recv(self, *args):
+        self.count += 1
+        e = iowait(self.sock)
+        
+        print("read >>>", self.count, e, os.get_blocking(self.sock.fileno()), self.context_name)
+        if not e:
+            raise TimeoutError('read')
+        return self.sock.recv(*args)
+
+
 def test_wrap_default():
     import ssl, socket
     SERVER_NAME, SERVER_PORT = "www.google.com", 443
     # generic socket and ssl configuration
-    socket.setdefaulttimeout(15)
+    socket.setdefaulttimeout(1)
     ctx = ssl.create_default_context()
     ctx.set_alpn_protocols(['h2'])
 
     # open a socket to the server and initiate TLS/SSL
     s = socket.create_connection((SERVER_NAME, SERVER_PORT))
     s = ctx.wrap_socket(s, server_hostname=SERVER_NAME)
+    s = sslsock(s, 'builtin')
     write_h2(s)
 # test1()
 # test2()
 
 test_wrap_all()
+# test_wrap_default()
 # test_wrap_default()

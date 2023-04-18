@@ -67,6 +67,17 @@ func (sc *SSLConnection) Recv(bufsize uint32) ([]byte, error) {
 	return data[:length], err
 }
 
+func (sc *SSLConnection) RecvNoWait(bufsize uint32) ([]byte, error) {
+	sc.conn.SetReadDeadline(time.Now())
+	data := make([]byte, bufsize)
+	length, err := sc.conn.Read(data)
+	if err != nil {
+		length = 0
+	}
+	sc.conn.SetReadDeadline(time.Time{})
+	return data[:length], nil
+}
+
 func (sc *SSLConnection) Send(buf []byte) (int, error) {
 	// data := make([]byte, bufsize)
 	if sc.writeTimeout != 0 {

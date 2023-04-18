@@ -8,6 +8,24 @@ extern "C"
 #include "safepy.h"
 #include "_cgo_export.h"
 
+
+#include <stdbool.h>
+
+static inline void INCREF(PyObject* obj){
+	Py_XINCREF(obj);
+}
+
+static inline void DECREF(PyObject* obj){
+	Py_XDECREF(obj);
+}
+
+inline PyObject* py_bool_from_bool(bool truth){
+	if (truth)
+        Py_RETURN_TRUE;
+	else
+		Py_RETURN_FALSE;
+}
+
     typedef size_t GoHandle;
     static PyObject* PyUTLS_Exc;
 
@@ -49,15 +67,20 @@ extern "C"
         Py_XDECREF(bytes);
         SAFEPY_Return(PyLong_FromLong(ctx));
     }
-    static PyObject *ssl_connection_read(PyObject *self, PyObject *args)
+    static PyObject *ssl_connection_read(PyObject *self, PyObject *args, PyObject * kwargs)
     {
         int read_size;
         GoHandle ctxptr;
         PyObject* bytes;
-        if (!PyArg_ParseTuple(args, "ni", &ctxptr, &read_size))
+        int no_wait = 0;
+        static char *kwlist[] = {"ctxptr", "read_size", "no_wait", NULL};
+        // if (!PyArg_ParseTuple(args, kwargs, "ni", kwlist, &ctxptr, &read_size, &no_wait))
+        // if (!PyArg_ParseTuple(args, "ni", &ctxptr, &read_size))
+        //     return NULL;
+        if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ni|p", kwlist, &ctxptr, &read_size, &no_wait))
             return NULL;
         Py_BEGIN_ALLOW_THREADS
-        bytes = go_ssl_connection_read(ctxptr, read_size);
+        bytes = go_ssl_connection_read(ctxptr, read_size, no_wait);
         Py_END_ALLOW_THREADS
         SAFEPY_Return(bytes);
     }
@@ -153,7 +176,7 @@ extern "C"
     static PyMethodDef functions[] = {
         // ssl_connection
         {"new_ssl_connection", new_ssl_connection, METH_VARARGS, "Create a new socket"},
-        {"ssl_connection_read", ssl_connection_read, METH_VARARGS, "Read bytesize from SSLConnwction"},
+        {"ssl_connection_read", (PyCFunction) ssl_connection_read, METH_VARARGS|METH_KEYWORDS, "Read bytesize from SSLConnwction"},
         {"ssl_connection_do_handshake", ssl_connection_do_handshake, METH_VARARGS, "Do handshake on SSLConnwction"},
         {"ssl_connection_write", ssl_connection_write, METH_VARARGS, "Write bytes to SSLConnection"},
         {"ssl_connection_close", ssl_connection_close, METH_VARARGS, "Close SSLConnection"},

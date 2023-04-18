@@ -137,19 +137,29 @@ func duplicate_fd(conn net.Conn) C.ssize_t {
 		handleError(err)
 		return 0
 	}
+
+	// tcpConn := conn.(*net.TCPConn)
+	// fdValue := reflect.ValueOf(tcpConn).Elem().FieldByName("fd").Elem()
+	// fd := int(fdValue.FieldByName("pfd").FieldByName("Sysfd").Int())
+	// fmt.Println("got fd", fd)
 	defer f.Close()
 	return C.duplicate_fd(C.ssize_t(f.Fd()))
 
 }
 
 //export go_ssl_connection_read
-func go_ssl_connection_read(cptr uintptr, size uint32) *C.PyObject {
+func go_ssl_connection_read(cptr uintptr, size uint32, no_wait bool) *C.PyObject {
 	c, err := Handle[*SSLConnection](cptr).Value()
 	if err != nil {
 		handleError(err)
 		return nil
 	}
-	bytes, err := c.Recv(size)
+	var bytes []byte
+	if no_wait {
+		bytes, err = c.RecvNoWait(size)
+	} else {
+		bytes, err = c.Recv(size)
+	}
 	if err != nil {
 		handleError(err)
 		return nil
@@ -335,7 +345,7 @@ func init2() {
 
 }
 
-func main() {
+func main2() {
 
 	/////////
 	// ctx := go_new_ssl_context(tls.VersionTLS13)
