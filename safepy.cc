@@ -2,13 +2,9 @@
 extern "C"
 {
 #include "safepy.h"
+#include "cgo.h"
 
-
-    void py_set_error(char* err){
-        SAFEPY_BEGIN
-        PyErr_SetString(PyExc_RuntimeError, err);
-        SAFEPY_END
-    }
+    // extern PyObject* PyUTLS_Exc;
 
     void safepy_Bytes_AsStringAndSize(PyObject* bytes, char **bufptr, Py_ssize_t* sizeptr){
         SAFEPY_BEGIN

@@ -1,5 +1,5 @@
 # this wrap has a close callback.
-# Which is used by  ip manager
+# Which is used by ip manager
 #  ip manager keep a connection number counter for every ip.
 
 import socket
@@ -7,12 +7,9 @@ import threading
 import codecs
 from asn1crypto.x509 import Certificate
 
-# import selectors2 as selectors
 import utils
 
-# from boringssl import lib as bssl, ffi
-
-from pyutls import ( 
+from pyutls import (
 
     #  ssl connection functions
     new_ssl_connection,
@@ -24,22 +21,23 @@ from pyutls import (
     ssl_connection_do_handshake,
     ssl_connection_leaf_cert,
     ssl_connection_set_timeout,
-    
     #  context functions
     new_ssl_context,
     new_ssl_context_from_bytes,
 
     # others functions
     close_go_handle
-    )
+)
+
 
 class HandleObject:
     _handle = 0
+
     def __init__(self, handle):
         self._handle = handle
-    
+
     @property
-    def  handle(self):
+    def handle(self):
         return self._handle
 
     def __del__(self):
@@ -49,32 +47,27 @@ class HandleObject:
     def run(self, fn, *args, **kwargs):
         return fn(self.handle, *args, **kwargs)
 
+
 class SSLContext(HandleObject):
     ALLOW_BLUNT_MIMICRY = True
     ALWAYS_PAD = False
-    def __init__(self, logger, ca_certs=None, cipher_suites=None, support_http2=True, protocol=None, handle=None):
-        if handle:
-            self.logger = logger
-            # self.handle = handle
-            # super(SSLContext, self).__init__(handle)
-            HandleObject.__init__(self, handle)
-            return
 
+    def __init__(self, logger, ca_certs=None, cipher_suites=None, support_http2=True, protocol=None, handle=None):
         self.logger = logger
-        self.context = self
-        self.support_http2 = support_http2
-        tls_ver = 772
-        handle = new_ssl_context(tls_ver, support_http2)
+        if not handle:
+            self.context = self
+            self.support_http2 = support_http2
+            tls_ver = 772
+            handle = new_ssl_context(tls_ver, support_http2)
         HandleObject.__init__(self, handle)
-    
+
     @classmethod
-    def from_bytes(cls, logger, raw_bytes : bytes=None, hex:str=None):
+    def from_bytes(cls, logger, raw_bytes: bytes = None, hex: str = None):
         if hex:
             raw_bytes = codecs.decode(hex, "hex")
         handle = new_ssl_context_from_bytes(cls.ALLOW_BLUNT_MIMICRY, cls.ALWAYS_PAD, raw_bytes)
-        obj  = cls(logger, handle=handle)
+        obj = cls(logger, handle=handle)
         return obj
-
 
     def supported_protocol(self):
         return "TLS 1.3"
@@ -83,89 +76,48 @@ class SSLContext(HandleObject):
         return "alpn"
 
 
-
 class SSLConnection(HandleObject):
+    _on_close = None
     CERT_DELIM = b"|!|!|"
+    timeout = 0
     @staticmethod
-    def parse_ip(ip_str):
+    def formatP_ip_str(ip_str):
         ip, port = utils.get_ip_port(ip_str)
-        ip = ip.decode('utf-8')
-        ip_split = ip.split(':')
-        if len(ip_split) > 1:
-            ip = '['+ ':'.join(ip_split[:5]) + ']'
+        ip = utils.to_str(ip)
+        if ":" in ip:
+            ip = '[' + ip + ']'
         return f'{ip}:{port}'
 
-
-    timeout = 10
     socket_closed = False
-    def __init__(self, context : SSLContext, sock, ip_str=None, sni=None, on_close=None):
+
+    def __init__(self, context: SSLContext, sock, ip_str=None, sni=None, on_close=None):
         self._lock = threading.Lock()
         self._context = context
         self._sock = sock
-        self.ip_port = self.parse_ip(ip_str)
-        self.ip_str = utils.to_bytes(ip_str)
-        self.sni = utils.to_bytes(sni)
+        self.ip_str = self.formatP_ip_str(ip_str)
+        self.sni = utils.to_str(sni)
+        if not sni:
+            self.sni = " "
         self._makefile_refs = 0
         self._on_close = on_close
         self.peer_cert = None
         self.socket_closed = False
-        # self._fileno = self._sock.fileno()
-        # self.timeout = self._sock.gettimeout() or 0.1
         self.running = True
         self._connection = None
         self.wrap()
 
-        # self.select2 = selectors.DefaultSelector()
-        # self.select2.register(sock, selectors.EVENT_WRITE)
-
     def wrap(self):
-        # try:
-        #     self._sock.connect((ip, port))
-        # except Exception as e:
-        #     raise socket.error('conn %s fail, sni:%s, e:%r' % (self.ip_str, self.sni, e))
+        try:
+            handle, fd = new_ssl_connection(self._context.handle, self.ip_str, self.sni)
+        except Exception as e:
+            if "no route to host" in e.args[0]:
+                raise socket.error
 
-        # self._sock.setblocking(True)
+            self._context.logger.exception("wrap %s e:%r", self.ip_str, e)
+            raise e
 
-        # fn = self._fileno
-        # bio = bssl.BSSL_BIO_new_socket(fn, self.BIO_CLOSE)
-
-        # self._connection = bssl.BSSL_SSL_new(self._context.ctx)
-
-        # if self.sni:
-        #     bssl.BSSL_SSL_set_tlsext_host_name(self._connection, utils.to_bytes(self.sni))
-
-        # bssl.BSSL_SSL_set_bio(self._connection, bio, bio)
-        handle, fd = new_ssl_connection(self._context.handle, self.ip_port, self.sni.decode('utf-8'))
         self._fileno = fd
-        # print("handle =>", handle)
         HandleObject.__init__(self, handle)
-        # if self._context.support_http2:
-        #     proto = b"h2"
-        #     setting = b"h2"
-        #     ret = bssl.BSSL_SSL_add_application_settings(self._connection,
-        #                                             proto, len(proto),
-        #                                             setting, len(setting))
-        #     if ret != 1:
-        #         error = bssl.BSSL_SSL_get_error(self._connection, ret)
-        #         raise socket.error("set alpn fail, error:%s" % error)
-
-        # ret = bssl.BSSL_SSL_connect(self._connection)
-        # if ret == 1:
-        #     return
-
-        # error = bssl.BSSL_SSL_get_error(self._connection, ret)
-        # if error == 1:
-        #     p = ffi.new("char[]", b"hello, worldhello, worldhello, worldhello, worldhello, world")  # p is a 'char *'
-        #     q = ffi.new("char **", p)  # q is a 'char **'
-        #     line_no = 0
-        #     line_no_p = ffi.new("int *", line_no)
-        #     error = bssl.BSSL_ERR_get_error_line(q, line_no_p)
-        #     filename = ffi.string(q[0])
-        #     # self._context.logger.error("error:%d file:%s, line:%s", error, filename, line_no_p[0])
-        #     raise socket.error("SSL_connect fail: %s, file:%s, line:%d, sni:%s" %
-        #                        (error, filename, line_no_p[0], self.sni))
-        # else:
-        #     raise socket.error("SSL_connect fail: %s, sni:%s" % (error, self.sni))
 
     @property
     def is_closed(self):
@@ -173,59 +125,22 @@ class SSLConnection(HandleObject):
             self.socket_closed = ssl_connection_closed(self.handle)
         return self.socket_closed
 
-
     def do_handshake(self):
         return self.run(ssl_connection_do_handshake)
-        # if not self._connection:
-        #     raise socket.error("do_handshake fail: not connected")
-
-        # ret = bssl.BSSL_SSL_do_handshake(self._connection)
-        # if ret == 1:
-        #     return
-
-        # error = bssl.BSSL_SSL_get_error(self._connection, ret)
-        # raise socket.error("do_handshake fail: %s" % error)
 
     def is_support_h2(self):
-        # if not self._connection:
-        #     return False
-
-        # out_data_pp = ffi.new("uint8_t**", ffi.NULL)
-        # out_len_p = ffi.new("unsigned*")
-        # bssl.BSSL_SSL_get0_alpn_selected(self._connection, out_data_pp, out_len_p)
-
-        # proto_len = out_len_p[0]
-        # if proto_len == 0:
-        #     return False
-
-        # if ffi.string(out_data_pp[0])[:proto_len] == b"h2":
-        #     return True
-
-        # return False
-
         return ssl_connection_h2_support(self.handle)
 
     def setblocking(self, block):
         self._context.logger.debug("%s setblocking: %d", self.ip_str, block)
-        # self._sock.setblocking(block)
-        # raise NotImplementedError()
         # already non blocking
         return
-
-    # def __getattr__(self, attr):
-    #     if attr in ('is_support_h2', "_on_close", '_context', '_sock', '_connection', '_makefile_refs',
-    #                   'sni', 'wrap', 'socket_closed'):
-    #         return getattr(self, attr)
-
-    #     elif hasattr(self._connection, attr):
-    #         return getattr(self._connection, attr)
-
 
     def get_cert(self):
         if self.peer_cert:
             return self.peer_cert
         certs = self.get_peercertificates()
-        self._context.logger.debug("Got %d certificates, using leaf cert with index 0", len(certs))
+        # self._context.logger.debug("Got %d certificates, using leaf cert with index 0", len(certs))
 
         cert = certs[0]
         try:
@@ -239,15 +154,12 @@ class SSLConnection(HandleObject):
             "commonName": "",
             "altName": altName
         }
-
         return self.peer_cert
 
     def get_peercertificates(self):
         cert_bytes = self.run(ssl_connection_leaf_cert)
         cert_arr = cert_bytes.split(self.CERT_DELIM)
         return tuple(map(Certificate.load, cert_arr))
-
-
 
     def send(self, data, flags=0):
         return ssl_connection_write(self.handle, data)
@@ -286,16 +198,19 @@ class SSLConnection(HandleObject):
     def __del__(self):
         self.close()
 
-    def settimeout(self, rtimeout, wtimeout=None):
+    def settimeout(self, t):
         if not self.running:
             return
 
-        if wtimeout == None:
-            wtimeout = rtimeout
-        if self.timeout != rtimeout:
-            self._context.logger.debug("settimeout %d", rtimeout)
-            self.run(ssl_connection_set_timeout, rtimeout, wtimeout)
-            self.timeout = rtimeout
+        if self.timeout != t:
+            self._context.logger.debug("settimeout %d", t)
+            self.run(ssl_connection_set_timeout, t, t)
+            self.timeout = t
+
+        # if self.timeout != t:
+        #     # self._context.logger.debug("settimeout %d", t)
+        #     self._sock.settimeout(t)
+        #     self.timeout = t
 
     def makefile(self, mode='r', bufsize=-1):
         self._makefile_refs += 1

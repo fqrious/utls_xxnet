@@ -9,6 +9,14 @@ extern "C"
 #include "_cgo_export.h"
 
     typedef size_t GoHandle;
+    static PyObject* PyUTLS_Exc;
+
+    void py_set_error(char* err){
+        SAFEPY_BEGIN
+        PyErr_SetString(PyUTLS_Exc, err);
+        SAFEPY_END
+    }
+
 
     static PyObject *new_ssl_connection(PyObject *self, PyObject *args)
     {
@@ -165,26 +173,44 @@ extern "C"
         {NULL, NULL, 0, NULL},
     };
 
-    static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "_pyutls",
-        NULL,
-        -1,
-        functions,
-    };
-    // PyObject *pymodule_def()
-    // {
-    //     return PyModule_Create(&moduledef);
-    // }
 
-    PyObject *PyInit_pyutls(void)
-    {
-        return PyModule_Create(&moduledef);
+
+    static int pyutls_modexec(PyObject * m){
+        if (PyUTLS_Exc == NULL){
+            PyUTLS_Exc = PyErr_NewException("pyutls.uTLSError", PyExc_IOError, NULL);
+        }
+        Py_INCREF(PyUTLS_Exc);
+        if (PyModule_AddObject(m, "error", PyUTLS_Exc) < 0){
+            Py_DECREF(PyUTLS_Exc);
+            return -1;
+        }
+
+
+        return 0;
     }
 
 
+    static PyModuleDef_Slot pyutls_slot[] = {
+        {Py_mod_exec, (void*)pyutls_modexec},
+        {0, NULL},
+    };
 
 
+    static struct PyModuleDef pyutls_module = {
+        PyModuleDef_HEAD_INIT,
+        .m_name = "_pyutls",
+        .m_doc = NULL,
+        .m_size = 0,
+        .m_methods = functions,
+        .m_slots = pyutls_slot,
+    };
+    // 
+
+
+    PyMODINIT_FUNC PyInit_pyutls(void)
+    {
+        return PyModuleDef_Init(&pyutls_module);
+    }
 
     //
     ssize_t duplicate_fd(ssize_t fd)

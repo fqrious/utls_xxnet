@@ -106,26 +106,30 @@ type Handle[T any] uintptr
 //
 // The intended use is to pass the returned handle to C code, which
 // passes it back to Go, which calls Value.
-func NewHandle[T any](v T) Handle[T] {
+func NewHandle[T any](v T) (_ Handle[T], err error) {
 	h := atomic.AddUintptr(&handleIdx, 1)
 	if h == 0 {
-		panic("runtime/cgo: ran out of handle space")
+		// panic("runtime/cgo: ")
+		err = fmt.Errorf("MemoryError: ran out of handle space")
+		return
 	}
 
 	handles.Store(h, v)
-	return Handle[T](h)
+	return Handle[T](h), nil
 }
 
 // Value returns the associated Go value for a valid handle.
 //
 // The method panics if the handle is invalid.
-func (h Handle[T]) Value() T {
+func (h Handle[T]) Value() (_ T, err error) {
 	v, ok := handles.Load(uintptr(h))
 	if !ok {
-		fmt.Println(uintptr(h))
-		panic("runtime/cgo: misuse of an invalid Handle")
+		// fmt.Println(uintptr(h))
+		// panic("runtime/cgo: misuse of an invalid Handle")
+		err = fmt.Errorf("misuse of an invalid Handle: %d", h)
+		return
 	}
-	return v.(T)
+	return v.(T), nil
 }
 
 // Value returns the associated Go value for a valid handle.
@@ -148,11 +152,13 @@ func (h Handle[T]) Ptr() uintptr {
 // no longer has a copy of the handle value.
 //
 // The method panics if the handle is invalid.
-func (h Handle[T]) Delete() {
+func (h Handle[T]) Delete() (err error) {
 	_, ok := handles.LoadAndDelete(uintptr(h))
 	if !ok {
-		panic("runtime/cgo: misuse of an invalid Handle")
+		err = fmt.Errorf("misuse of an invalid Handle: %d", h)
+		return
 	}
+	return
 }
 
 var (

@@ -109,7 +109,11 @@ func handleError(e error) {
 
 //export go_new_ssl_connection
 func go_new_ssl_connection(ctxptr uintptr, address, sni *C.char) *C.PyObject {
-	ctx := Handle[*SSLContext](ctxptr).Value()
+	ctx, err := Handle[*SSLContext](ctxptr).Value()
+	if err != nil {
+		handleError(err)
+		return nil
+	}
 	s, err := NewSSLConnection(ctx, 0, C.GoString(address), C.GoString(sni))
 	if err != nil {
 		handleError(err)
@@ -117,7 +121,11 @@ func go_new_ssl_connection(ctxptr uintptr, address, sni *C.char) *C.PyObject {
 	}
 	fd := duplicate_fd((s.conn.GetUnderlyingConn()))
 	if fd != 0 {
-		handle := NewHandle[any](s).Ptr()
+		handle, err := NewHandle[any](s)
+		if err != nil {
+			handleError(err)
+			return nil
+		}
 		return C.ssl_connection_return(C.ssize_t(handle), fd)
 	}
 	return nil
@@ -136,7 +144,11 @@ func duplicate_fd(conn net.Conn) C.ssize_t {
 
 //export go_ssl_connection_read
 func go_ssl_connection_read(cptr uintptr, size uint32) *C.PyObject {
-	c := Handle[*SSLConnection](cptr).Value()
+	c, err := Handle[*SSLConnection](cptr).Value()
+	if err != nil {
+		handleError(err)
+		return nil
+	}
 	bytes, err := c.Recv(size)
 	if err != nil {
 		handleError(err)
@@ -148,7 +160,11 @@ func go_ssl_connection_read(cptr uintptr, size uint32) *C.PyObject {
 //export go_ssl_connection_write
 func go_ssl_connection_write(cptr uintptr, pybuf *C.PyObject) C.long {
 	buf := py2go_bytes(pybuf, false)
-	c := Handle[*SSLConnection](cptr).Value()
+	c, err := Handle[*SSLConnection](cptr).Value()
+	if err != nil {
+		handleError(err)
+		return 0
+	}
 	bytes_written, err := c.Send(buf)
 	if err != nil {
 		handleError(err)
@@ -159,8 +175,12 @@ func go_ssl_connection_write(cptr uintptr, pybuf *C.PyObject) C.long {
 
 //export go_ssl_connection_do_handshake
 func go_ssl_connection_do_handshake(cptr uintptr) bool {
-	c := Handle[*SSLConnection](cptr).Value()
-	err := c.conn.Handshake()
+	c, err := Handle[*SSLConnection](cptr).Value()
+	if err != nil {
+		handleError(err)
+		return false
+	}
+	err = c.conn.Handshake()
 	if err != nil {
 		handleError(err)
 		return false
@@ -170,14 +190,22 @@ func go_ssl_connection_do_handshake(cptr uintptr) bool {
 
 //export go_ssl_connection_set_timeout
 func go_ssl_connection_set_timeout(cptr uintptr, readTimeout, writeTimeout int) {
-	c := Handle[*SSLConnection](cptr).Value()
+	c, err := Handle[*SSLConnection](cptr).Value()
+	if err != nil {
+		handleError(err)
+		return
+	}
 	c.readTimeout = time.Duration(readTimeout) * time.Second
 	c.writeTimeout = time.Duration(writeTimeout) * time.Second
 }
 
 //export go_ssl_connection_h2_support
 func go_ssl_connection_h2_support(cptr uintptr) bool {
-	c := Handle[*SSLConnection](cptr).Value()
+	c, err := Handle[*SSLConnection](cptr).Value()
+	if err != nil {
+		handleError(err)
+		return false
+	}
 	state := c.conn.ConnectionState()
 	if !state.HandshakeComplete {
 		handleError(fmt.Errorf("handshake not complete"))
@@ -188,7 +216,11 @@ func go_ssl_connection_h2_support(cptr uintptr) bool {
 
 //export go_ssl_connection_get_cert
 func go_ssl_connection_get_cert(cptr uintptr) *C.PyObject {
-	c := Handle[*SSLConnection](cptr).Value()
+	c, err := Handle[*SSLConnection](cptr).Value()
+	if err != nil {
+		handleError(err)
+		return nil
+	}
 	state := c.conn.ConnectionState()
 	if !state.HandshakeComplete {
 		handleError(fmt.Errorf("handshake not complete"))
@@ -220,10 +252,13 @@ func go_ssl_connection_get_cert(cptr uintptr) *C.PyObject {
 //export go_ssl_connection_close
 func go_ssl_connection_close(cptr uintptr, close_context bool) bool {
 	connptr := Handle[*SSLConnection](cptr)
-	defer connptr.Delete() // clean up handle file
-	c := connptr.Value()
+	c, err := connptr.Value()
+	if err != nil {
+		handleError(err)
+		return false
+	}
 
-	err := c.conn.Close()
+	err = c.conn.Close()
 	if err != nil {
 		handleError(err)
 		return false
@@ -256,7 +291,12 @@ func go_new_ssl_context(protocol uint16, with_alpn bool) uintptr {
 		handleError(err)
 		return 0
 	}
-	return NewHandle[any](ctx).Ptr()
+	handle, err := NewHandle[any](ctx)
+	if err != nil {
+		handleError(err)
+		return 0
+	}
+	return handle.Ptr()
 }
 
 //export go_new_ssl_context_from_bytes
@@ -269,7 +309,12 @@ func go_new_ssl_context_from_bytes(hello_bytes *C.PyObject, blunt, always_pad bo
 		handleError(err)
 		return 0
 	}
-	return uintptr(NewHandle[any](ctx))
+	handle, err := NewHandle[any](ctx)
+	if err != nil {
+		handleError(err)
+		return 0
+	}
+	return uintptr(handle)
 }
 
 //export go_clear_handle
