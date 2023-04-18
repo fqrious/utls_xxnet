@@ -5,7 +5,7 @@
 import os
 import socket
 import selectors
-import threading
+import threading, queue
 import codecs
 from asn1crypto.x509 import Certificate
 
@@ -48,6 +48,29 @@ class HandleObject:
 
     def run(self, fn, *args, **kwargs):
         return fn(self.handle, *args, **kwargs)
+
+    @classmethod
+    def run_static(cls, fn, *args, **kwargs):
+        # print("====>", fn, args, kwargs)
+        return fn(*args, **kwargs)
+    @classmethod
+    def _run_no_block(cls, q, fn, *args, **kw):
+        try:
+            out = cls.run_static(fn, *args, **kw)
+            q.put((True, out))
+        except BaseException as e:
+            q.put((False, e))
+
+    @classmethod
+    def run_noblock(cls, fn, *args, **kwargs):
+        q = queue.Queue(1)
+        fn_args = [q, fn, *args]
+        t = threading.Thread(target=cls._run_no_block, args=fn_args, kwargs=kwargs)
+        t.start()
+        success, result = q.get()
+        if not success:
+            raise result
+        return result
 
 
 class SSLContext(HandleObject):
@@ -111,7 +134,8 @@ class SSLConnection(HandleObject):
 
     def wrap(self):
         try:
-            handle, fd = new_ssl_connection(self._context.handle, self.ip_str, self.sni)
+            # handle, fd =  new_ssl_connection(self._context.handle, self.ip_str, self.sni)
+            handle, fd =  self.run_noblock(new_ssl_connection, self._context.handle, self.ip_str, self.sni)
         except Exception as e:
             if "no route to host" in e.args[0]:
                 raise socket.error
@@ -142,7 +166,7 @@ class SSLConnection(HandleObject):
         events = self.__iowait(selectors.EVENT_WRITE)
         if not events:
             raise TimeoutError("Handshake timed out after %s seconds"%self.timeout)
-        return self.run(ssl_connection_do_handshake)
+        return self.run_noblock(self.run, ssl_connection_do_handshake)
 
     def is_support_h2(self):
         return ssl_connection_h2_support(self.handle)

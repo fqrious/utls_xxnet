@@ -10,13 +10,14 @@ import h2.events
 logger = getLogger(__name__)
 TIMEOUT = 2
 
+SERVER_ADDRESS = "2a00:1450:4009:820::101e"
+# SERVER_ADDRESS = "www.google.com:443"
 
 def test_wrap(ctx, name):
     print("=============>", name, "<=============")
-    sock = SSLConnection(ctx, None, "www.google.com:443", b"www.google.com")
+    sock = SSLConnection(ctx, None, SERVER_ADDRESS, b"www.google.com")
     # h2support = pyutls.ssl_connection_h2_support(sock)
     # print("Before Handshake, H2 Support =>", h2support)
-    
     sock.do_handshake()
     sock.settimeout(TIMEOUT)
     h2support = sock.is_support_h2()
@@ -118,7 +119,7 @@ def iowait(self, event=selectors.EVENT_READ):
         #         readable, _, _ = select.select([self], [], [])
         #         if readable:
         #             return True
-        selector = selectors.PollSelector()
+        selector = selectors.DefaultSelector()
         select_key = selector.register(self.fileno(), event)
         events = selector.select(self.timeout)
         selector.unregister(select_key.fd)

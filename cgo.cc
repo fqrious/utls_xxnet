@@ -40,10 +40,13 @@ inline PyObject* py_bool_from_bool(bool truth){
     {
         char *address, *sni;
         GoHandle ctxptr;
+        PyObject * tuple;
         if (!PyArg_ParseTuple(args, "nss", &ctxptr, &address, &sni))
             return NULL;
-        auto tuple = go_new_ssl_connection(ctxptr, address, sni);
-        return tuple;
+        Py_BEGIN_ALLOW_THREADS
+        tuple = go_new_ssl_connection(ctxptr, address, sni);
+        Py_END_ALLOW_THREADS
+        SAFEPY_Return(tuple);
     }
 
     static PyObject *new_ssl_context(PyObject *self, PyObject *args)
@@ -53,7 +56,7 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "Hp", &protocol, &with_alpn))
             return NULL;
         auto ctx = go_new_ssl_context(protocol, with_alpn);
-        return PyLong_FromLong(ctx);
+        SAFEPY_Return(PyLong_FromLong(ctx));
     }
 
     static PyObject *new_ssl_context_from_bytes(PyObject *self, PyObject *args)
@@ -251,6 +254,10 @@ inline PyObject* py_bool_from_bool(bool truth){
 
     PyObject *ssl_connection_return(ssize_t handle, ssize_t fd)
     {
-        return Py_BuildValue("(ii)", handle, fd);
+        // return Py_BuildValue("(ii)", handle, fd);
+        SAFEPY_BEGIN
+        auto out = Py_BuildValue("(ii)", handle, fd);
+        SAFEPY_END
+        return out;
     }
 }
