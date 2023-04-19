@@ -345,7 +345,7 @@ func init2() {
 
 }
 
-func main2() {
+func main() {
 
 	/////////
 	// ctx := go_new_ssl_context(tls.VersionTLS13)
