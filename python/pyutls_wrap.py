@@ -47,7 +47,11 @@ class HandleObject:
             close_go_handle(self.handle)
 
     def run(self, fn, *args, **kwargs):
-        return fn(self.handle, *args, **kwargs)
+        # return fn(self.handle, *args, **kwargs)
+        return self.run_static(fn, self.handle, *args, **kwargs)
+
+    def run_noblock(self, fn, *args, **kwargs):
+        return self.run_noblock_static(fn, self.handle, *args, **kwargs)
 
     @classmethod
     def run_static(cls, fn, *args, **kwargs):
@@ -62,7 +66,7 @@ class HandleObject:
             q.put((False, e))
 
     @classmethod
-    def run_noblock(cls, fn, *args, **kwargs):
+    def run_noblock_static(cls, fn, *args, **kwargs):
         q = queue.Queue(1)
         fn_args = [q, fn, *args]
         t = threading.Thread(target=cls._run_no_block, args=fn_args, kwargs=kwargs)
@@ -135,7 +139,7 @@ class SSLConnection(HandleObject):
     def wrap(self):
         try:
             # handle, fd =  new_ssl_connection(self._context.handle, self.ip_str, self.sni)
-            handle, fd =  self.run_noblock(new_ssl_connection, self._context.handle, self.ip_str, self.sni)
+            handle, fd =  self.run_noblock_static(new_ssl_connection, self._context.handle, self.ip_str, self.sni)
         except Exception as e:
             if "no route to host" in e.args[0]:
                 raise socket.error
@@ -166,7 +170,7 @@ class SSLConnection(HandleObject):
         events = self.__iowait(selectors.EVENT_WRITE)
         if not events:
             raise TimeoutError("Handshake timed out after %s seconds"%self.timeout)
-        return self.run_noblock(self.run, ssl_connection_do_handshake)
+        return self.run_noblock(ssl_connection_do_handshake)
 
     def is_support_h2(self):
         return ssl_connection_h2_support(self.handle)
@@ -207,7 +211,7 @@ class SSLConnection(HandleObject):
         events = self.__iowait(selectors.EVENT_WRITE)
         if not events:
             raise TimeoutError("Write timed out after %s seconds"%self.timeout)
-        return ssl_connection_write(self.handle, data)
+        return self.run_noblock(ssl_connection_write, data)
 
     def recv(self, bufsiz, flags=0):
         if out := ssl_connection_read(self.handle, bufsiz, no_wait=True): #attempt to read what's left in buffer without blocking
@@ -215,7 +219,7 @@ class SSLConnection(HandleObject):
         events = self.__iowait(selectors.EVENT_READ)
         if not events:
             raise TimeoutError("Read timed out after %s seconds"%self.timeout)
-        return ssl_connection_read(self.handle, bufsiz)
+        return self.run_noblock(ssl_connection_read, bufsiz)
 
     def recv_into(self, buf, nbytes=None):
         if not nbytes:
@@ -238,7 +242,8 @@ class SSLConnection(HandleObject):
             self.running = False
             if not self.socket_closed:
                 if self.handle:
-                    ret = ssl_connection_close(self.handle)
+                    # ret = ssl_connection_close(self.handle)
+                    ret = self.run(ssl_connection_close)
 
                 self.socket_closed = True
                 if self._on_close:

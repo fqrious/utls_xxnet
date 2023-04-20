@@ -11,7 +11,7 @@ logger = getLogger(__name__)
 TIMEOUT = 2
 
 SERVER_ADDRESS = "2a00:1450:4009:820::101e"
-# SERVER_ADDRESS = "www.google.com:443"
+SERVER_ADDRESS = "www.google.com:443"
 
 def test_wrap(ctx, name):
     print("=============>", name, "<=============")
