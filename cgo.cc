@@ -132,15 +132,15 @@ inline PyObject* py_bool_from_bool(bool truth){
     }
 
 
-        static PyObject *ssl_connection_set_timeout(PyObject *self, PyObject *args)
+        static PyObject *ssl_connection_set_block_max(PyObject *self, PyObject *args)
     {
         // const char **kw = {"close_context",NULL};
         bool close_context = true;
         GoHandle ctxptr;
-        int readTimeout, writeTimeout;
-        if (!PyArg_ParseTuple(args, "nii", &ctxptr, &readTimeout, &writeTimeout))
+        double blockTimeout;
+        if (!PyArg_ParseTuple(args, "nd", &ctxptr, &blockTimeout))
             return NULL;
-        go_ssl_connection_set_timeout(ctxptr, readTimeout, writeTimeout);
+        go_ssl_connection_set_block_max(ctxptr, blockTimeout);
         SAFEPY_Return(Py_NewRef(Py_None));
     }
 
@@ -185,8 +185,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         {"ssl_connection_close", ssl_connection_close, METH_VARARGS, "Close SSLConnection"},
         {"ssl_connection_closed", ssl_connection_closed, METH_VARARGS, "Check if SSLConnection is closed"},
         {"ssl_connection_h2_support", ssl_connection_h2_support, METH_VARARGS, "Check if SSLConnection supports h2"},
-        {"ssl_connection_leaf_cert", ssl_connection_leaf_cert, METH_VARARGS, "Check if SSLConnection supports h2"},
-        {"ssl_connection_set_timeout", ssl_connection_set_timeout, METH_VARARGS, "Check if SSLConnection supports h2"},
+        {"ssl_connection_leaf_cert", ssl_connection_leaf_cert, METH_VARARGS, "Get SSLConnection certificate"},
+        {"ssl_connection_set_block_max", ssl_connection_set_block_max, METH_VARARGS, "Set max block time before connection reset, default 5 seconds"},
 
         // ssl_context
         {"new_ssl_context_from_bytes", new_ssl_context_from_bytes, METH_VARARGS, "Create a new SSLContext"},

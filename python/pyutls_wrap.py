@@ -22,7 +22,7 @@ from pyutls import (
     ssl_connection_closed,
     ssl_connection_do_handshake,
     ssl_connection_leaf_cert,
-    ssl_connection_set_timeout,
+    ssl_connection_set_block_max,
     #  context functions
     new_ssl_context,
     new_ssl_context_from_bytes,
@@ -118,6 +118,7 @@ class SSLConnection(HandleObject):
         return f'{ip}:{port}'
 
     socket_closed = False
+    _blockmax = 5
 
     def __init__(self, context: SSLContext, sock, ip_str=None, sni=None, on_close=None):
         self._lock = threading.Lock()
@@ -135,6 +136,16 @@ class SSLConnection(HandleObject):
         self._connection = None
         
         self.wrap()
+
+    @property
+    def blockmax(self):
+        return self._blockmax
+
+    @blockmax.setter
+    def blockmax(self, value):
+        self.run(ssl_connection_set_block_max, value)
+        self._blockmax = value
+        return True
 
     def wrap(self):
         try:

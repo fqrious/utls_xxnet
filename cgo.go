@@ -198,15 +198,14 @@ func go_ssl_connection_do_handshake(cptr uintptr) bool {
 	return true
 }
 
-//export go_ssl_connection_set_timeout
-func go_ssl_connection_set_timeout(cptr uintptr, readTimeout, writeTimeout int) {
+//export go_ssl_connection_set_block_max
+func go_ssl_connection_set_block_max(cptr uintptr, blockTimeout float64) {
 	c, err := Handle[*SSLConnection](cptr).Value()
 	if err != nil {
 		handleError(err)
 		return
 	}
-	c.readTimeout = time.Duration(readTimeout) * time.Second
-	c.writeTimeout = time.Duration(writeTimeout) * time.Second
+	c.failAfter = time.Duration(blockTimeout * float64(time.Second))
 }
 
 //export go_ssl_connection_h2_support
