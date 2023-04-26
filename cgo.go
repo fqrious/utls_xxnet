@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"syscall"
 	"time"
 	"unsafe"
 )
@@ -142,9 +143,10 @@ func duplicate_fd(conn net.Conn) C.ssize_t {
 	// fdValue := reflect.ValueOf(tcpConn).Elem().FieldByName("fd").Elem()
 	// fd := int(fdValue.FieldByName("pfd").FieldByName("Sysfd").Int())
 	// fmt.Println("got fd", fd)
+	fd := f.Fd()
+	syscall.SetNonblock(int(fd), true)
 	defer f.Close()
-	return C.duplicate_fd(C.ssize_t(f.Fd()))
-
+	return C.duplicate_fd(C.ssize_t(fd))
 }
 
 //export go_ssl_connection_read

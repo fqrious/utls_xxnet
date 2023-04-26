@@ -67,6 +67,8 @@ class HandleObject:
 
     @classmethod
     def run_noblock_static(cls, fn, *args, **kwargs):
+        if False:
+            return cls.run_static(fn, *args, **kwargs)
         q = queue.Queue(1)
         fn_args = [q, fn, *args]
         t = threading.Thread(target=cls._run_no_block, args=fn_args, kwargs=kwargs)
@@ -165,6 +167,8 @@ class SSLConnection(HandleObject):
 
 
     def __iowait(self, event=selectors.EVENT_READ):
+        if self.fileno() == 1033:
+            return True
         selector = selectors.DefaultSelector()
         select_key = selector.register(self.fileno(), event)
         events = selector.select(self.timeout)
@@ -225,7 +229,7 @@ class SSLConnection(HandleObject):
         return self.run_noblock(ssl_connection_write, data)
 
     def recv(self, bufsiz, flags=0):
-        if out := ssl_connection_read(self.handle, bufsiz, no_wait=True): #attempt to read what's left in buffer without blocking
+        if out := self.run_noblock(ssl_connection_read, bufsiz, no_wait=True): #attempt to read what's left in buffer without blocking
             return out
         events = self.__iowait(selectors.EVENT_READ)
         if not events:
