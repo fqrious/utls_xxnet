@@ -6,7 +6,8 @@ extern "C"
 #include <Python.h>
 #include "cgo.h"
 #include "safepy.h"
-#include "_cgo_export.h"
+// #include "_cgo_export.h"
+#include "pyutls.h"
 
 
 #include <stdbool.h>

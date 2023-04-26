@@ -6,8 +6,8 @@ package main
 // #cgo LDFLAGS: -L/usr/lib -lpython3.10 -lcrypt -ldl  -lm -lm
 
 #include <stdlib.h>
-#include "cgo.h"
-#include "safepy.h"
+#include "pyapi/cgo.h"
+#include "pyapi/safepy.h"
 
 // for duplicate_fd
 #include <fcntl.h>
