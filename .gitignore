@@ -17,3 +17,15 @@
 build/
 tester/
 .vscode/
+
+# Ignore python bytecodes
+dist/
+
+*.pyc
+*.pyo
+*.pyd
+
+*.egg-info/
+__pycache__/
+.installed.cfg
+*.egg

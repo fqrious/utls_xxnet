@@ -57,6 +57,7 @@ class HandleObject:
     @classmethod
     def run_static(cls, fn, *args, **kwargs):
         # print("====>", fn, args, kwargs)
+        print("calling ", fn)
         return fn(*args, **kwargs)
     @classmethod
     def _run_no_block(cls, q, fn, *args, **kw):
@@ -168,7 +169,8 @@ class SSLConnection(HandleObject):
 
 
     def __iowait(self, event=selectors.EVENT_READ):
-        print(f"waiting for {event} on {self.fileno()}")
+        if self.fileno() == 1033:
+            return True
         selector = selectors.DefaultSelector()
         select_key = selector.register(self.fileno(), event)
         events = selector.select(self.timeout)
