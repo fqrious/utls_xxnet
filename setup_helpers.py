@@ -38,7 +38,7 @@ def get_data():
 def run_command_silently(cmd, **kw):
     try:
         print(f"setup: running `{' '.join(cmd)}`")
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, **kw)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, encoding='utf-8', **kw)
         return output.decode().strip()
     except subprocess.CalledProcessError as e:
         error_message = e.output.decode().strip()
