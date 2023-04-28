@@ -327,9 +327,7 @@ func go_new_ssl_context(protocol uint16, with_alpn bool) uintptr {
 func go_new_ssl_context_from_bytes(hello_bytes *C.PyObject, blunt, always_pad bool) uintptr {
 	// C.INCREF(hello_bytes)
 	// defer C.DECREF(hello_bytes)
-	fmt.Println("here, go!")
 	hello := py2go_bytes(hello_bytes, false)
-	fmt.Println("back here, go!")
 	ctx, err := NewSSLContextFromHelloBytes(hello, blunt, always_pad)
 	if err != nil {
 		handleError(err)

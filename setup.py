@@ -82,6 +82,6 @@ setup(name='pyutls',
       package_dir = {'': 'src'},
     #   include_package_data=True,
       ext_package="pyutls",
-      requires=['six', 'asn1crypto'],
+      install_requires=['six', 'asn1crypto'],
       setup_requires=["wheel"],
 )
