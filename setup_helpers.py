@@ -1,5 +1,6 @@
 import subprocess, platform
 import os, re
+import sysconfig
 FUNCTION_MATCH = re.compile('\d+\s+[0-9A-F]+\s+[0-9A-F]+\s(\w+)')
 
 def build_lib_from_dll(libdir, dllname, libname):
@@ -43,3 +44,10 @@ def run_command_silently(cmd, **kw):
     except subprocess.CalledProcessError as e:
         error_message = e.output.strip()
         raise RuntimeError(f"Error running command '{' '.join(cmd)}': {error_message}")
+
+def get_ld_flags():
+    cmd = sysconfig.get_config_var('LDSHARED')
+    exe = cmd.split(' ', 1)[0]
+    if 'clang' in exe or 'g++' in exe or 'gcc' in exe:
+        return ' '.join(cmd.split(' ')[2:])
+    raise Exception('Unsupported compiler/os: %s'%exe)

@@ -3,7 +3,7 @@ import sysconfig
 from setuptools import find_packages, setup, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.build import build
-from setup_helpers import build_lib_from_dll, run_command_silently, touch
+from setup_helpers import build_lib_from_dll, get_ld_flags, run_command_silently, touch
 
 libdir = "build/lib"
 
@@ -32,6 +32,9 @@ class CustomBuildExtCommand(build_ext):
         else:
             touch(libdir, libname)
             libname = "libgoutls.a"
+        if platform.system() == 'Darwin':
+            ld_flags = get_ld_flags()
+            self.configure_env['CGO_LDFLAGS'] = ld_flags
         # print("$env:LDFLAGS = ", self.configure_env['LDFLAGS'])
         run_command_silently(['go', 'build', '-buildmode='+buildmode, '-o', f'./{libdir}/{libname}', self.gosrc], env=self.configure_env)
         # print(' '.join(['go', 'build', '-buildmode='+buildmode, '-o', f'../{libdir}/{libname}', '-C', self.gosrc]))
