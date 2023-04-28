@@ -39,7 +39,7 @@ def run_command_silently(cmd, **kw):
     try:
         print(f"setup: running `{' '.join(cmd)}`")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, encoding='utf-8', **kw)
-        return output.decode().strip()
+        return output.strip()
     except subprocess.CalledProcessError as e:
-        error_message = e.output.decode().strip()
+        error_message = e.output.strip()
         raise RuntimeError(f"Error running command '{' '.join(cmd)}': {error_message}")
