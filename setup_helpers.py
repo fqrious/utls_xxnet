@@ -18,8 +18,9 @@ def touch(libdir, dllname):
 
 def gendef(dir, name, outfile):
     lib = os.path.join(dir, name)
-    p = subprocess.Popen(['dumpbin', '/EXPORTS', lib], stdout=subprocess.PIPE)
-    output, _ = p.communicate()
+    # p = subprocess.Popen(['dumpbin', '/EXPORTS', lib], stdout=subprocess.PIPE)
+    # output, _ = p.communicate()
+    output = run_command_silently(['dumpbin', '/EXPORTS', lib])
     outfile.write(f'LIBRARY "{name}"\n')
     outfile.write('EXPORTS\n')
     for line in output.decode().splitlines():
@@ -33,3 +34,12 @@ def get_data():
         data.append(("lib", ))
     return data
 # build_lib_from_dll("build/lib", "libgoutls", "goutls.lib")
+
+def run_command_silently(cmd, **kw):
+    try:
+        print(f"setup: running `{' '.join(cmd)}`")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, **kw)
+        return output.decode().strip()
+    except subprocess.CalledProcessError as e:
+        error_message = e.output.decode().strip()
+        raise RuntimeError(f"Error running command '{' '.join(cmd)}': {error_message}")

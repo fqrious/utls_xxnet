@@ -1,10 +1,9 @@
 import os, platform
-import subprocess
 import sysconfig
 from setuptools import find_packages, setup, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.build import build
-from setup_helpers import build_lib_from_dll, touch
+from setup_helpers import build_lib_from_dll, run_command_silently, touch
 
 libdir = "build/lib"
 
@@ -34,7 +33,7 @@ class CustomBuildExtCommand(build_ext):
             touch(libdir, libname)
             libname = "libgoutls.a"
         # print("$env:LDFLAGS = ", self.configure_env['LDFLAGS'])
-        subprocess.run(['go', 'build', '-buildmode='+buildmode, '-o', f'./{libdir}/{libname}', self.gosrc], env=self.configure_env)
+        run_command_silently(['go', 'build', '-buildmode='+buildmode, '-o', f'./{libdir}/{libname}', self.gosrc], env=self.configure_env)
         # print(' '.join(['go', 'build', '-buildmode='+buildmode, '-o', f'../{libdir}/{libname}', '-C', self.gosrc]))
         if platform.system() == "Windows":
             build_lib_from_dll(libdir, libname, "goutls.lib")
@@ -67,6 +66,7 @@ _pyutls = Extension('_pyutls',
                     libraries=["goutls"],
     )
 
+
 # Define the setup parameters
 setup(name='pyutls',
       version='0.0.1',
@@ -78,5 +78,7 @@ setup(name='pyutls',
     #   data_files=[("dlls", [libdir+"/"+"libgoutls"])],
       package_dir = {'': 'src'},
     #   include_package_data=True,
-      ext_package="pyutls"
-      )
+      ext_package="pyutls",
+      requires=['six', 'asn1crypto'],
+      setup_requires=["wheel"],
+)
