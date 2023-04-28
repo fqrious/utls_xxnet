@@ -23,7 +23,7 @@ def gendef(dir, name, outfile):
     output = run_command_silently(['dumpbin', '/EXPORTS', lib])
     outfile.write(f'LIBRARY "{name}"\n')
     outfile.write('EXPORTS\n')
-    for line in output.decode().splitlines():
+    for line in output.splitlines():
         if match := FUNCTION_MATCH.search(line):
             fn = match.group(1)
             outfile.write(f'  {fn}\n')
