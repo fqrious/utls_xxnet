@@ -11,6 +11,7 @@ libdir = "build/lib"
 
 # Define a custom command class that inherits from build_ext
 class CustomBuildExtCommand(build_ext):
+    extra_dlls = []
     def initialize_options(self):
         # Set environment variables here
         self.configure_env = os.environ.copy()
@@ -28,7 +29,7 @@ class CustomBuildExtCommand(build_ext):
             version = sysconfig.get_config_var('VERSION')
             prefix = sysconfig.get_config_var('prefix')
             self.configure_env['CGO_LDFLAGS'] = f"-L '{prefix}' -lpython{version}"
-            self.extra_dlls = [os.path.join(libdir, libname)]
+            self.extra_dlls.append(os.path.join(libdir, libname))
         else:
             touch(libdir, libname)
             libname = "libgoutls.a"

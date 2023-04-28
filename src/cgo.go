@@ -147,7 +147,13 @@ func duplicate_fd(conn net.Conn) C.ssize_t {
 
 	tcpConn := conn.(*net.TCPConn)
 	fdValue := reflect.ValueOf(tcpConn).Elem().FieldByName("fd").Elem()
-	fd := uintptr(fdValue.FieldByName("pfd").FieldByName("Sysfd").Uint())
+	sysfd := fdValue.FieldByName("pfd").FieldByName("Sysfd")
+	var fd uintptr
+	if sysfd.Kind() == reflect.Uint {
+		fd = uintptr(sysfd.Uint())
+	} else {
+		fd = uintptr(sysfd.Int())
+	}
 	// fmt.Println("got fd", fd)
 	// fd := f.Fd()
 	// handle := syscall.Handle(fd)
