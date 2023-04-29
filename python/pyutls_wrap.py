@@ -227,7 +227,7 @@ class SSLConnection(HandleObject):
         return self.run_noblock(ssl_connection_write, data)
 
     def recv(self, bufsiz, flags=0):
-        out = self.run_noblock(ssl_connection_read, bufsiz, no_wait=True): #attempt to read what's left in buffer without blocking
+        out = self.run_noblock(ssl_connection_read, bufsiz, no_wait=True) #attempt to read what's left in buffer without blocking
         if out:
             return out
         events = self.__iowait(selectors.EVENT_READ)
