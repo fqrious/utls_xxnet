@@ -25,7 +25,8 @@ def gendef(dir, name, outfile):
     outfile.write(f'LIBRARY "{name}"\n')
     outfile.write('EXPORTS\n')
     for line in output.splitlines():
-        if match := FUNCTION_MATCH.search(line):
+        match = FUNCTION_MATCH.search(line)
+        if match:
             fn = match.group(1)
             outfile.write(f'  {fn}\n')
             
