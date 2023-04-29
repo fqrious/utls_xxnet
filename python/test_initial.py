@@ -18,7 +18,7 @@ def test_wrap(ctx, name):
     sock = SSLConnection(ctx, None, SERVER_ADDRESS, b"www.google.com")
     # h2support = pyutls.ssl_connection_h2_support(sock)
     # print("Before Handshake, H2 Support =>", h2support)
-    sock.blockmax = 0.001
+    sock.blockmax = TIMEOUT/2
     sock.do_handshake()
     sock.settimeout(TIMEOUT)
     h2support = sock.is_support_h2()
@@ -160,15 +160,14 @@ def test_wrap_default():
     import ssl, socket
     SERVER_NAME, SERVER_PORT = "www.google.com", 443
     # generic socket and ssl configuration
-    socket.setdefaulttimeout(1)
+    socket.setdefaulttimeout(TIMEOUT)
     ctx = ssl.create_default_context()
-    ctx.set_alpn_protocols(['h2'])
+    ctx.set_alpn_protocols(['http/1.1'])
 
     # open a socket to the server and initiate TLS/SSL
     s = socket.create_connection((SERVER_NAME, SERVER_PORT))
     s = ctx.wrap_socket(s, server_hostname=SERVER_NAME)
-    s = sslsock(s, 'builtin')
-    write_h2(s)
+    write(s, False)
 # test1()
 # test2()
 

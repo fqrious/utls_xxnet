@@ -41,7 +41,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         Py_BEGIN_ALLOW_THREADS
         tuple = go_new_ssl_connection(ctxptr, address, sni);
         Py_END_ALLOW_THREADS
-        SAFEPY_Return(tuple);
+        SAFEPY_Return
+        return (tuple);
     }
 
     static PyObject *new_ssl_context(PyObject *self, PyObject *args)
@@ -51,7 +52,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "Hp", &protocol, &with_alpn))
             return NULL;
         auto ctx = go_new_ssl_context(protocol, with_alpn);
-        SAFEPY_Return(PyLong_FromSize_t(ctx));
+        SAFEPY_Return
+        return (PyLong_FromSize_t(ctx));
     }
 
     static PyObject *new_ssl_context_from_bytes(PyObject *self, PyObject *args)
@@ -64,7 +66,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         std::cout << "here in c";
         auto ctx = go_new_ssl_context_from_bytes(bytes, blunt, padding);
         Py_XDECREF(bytes);
-        SAFEPY_Return(PyLong_FromSize_t(ctx));
+        SAFEPY_Return
+        return (PyLong_FromSize_t(ctx));
     }
     static PyObject *ssl_connection_read(PyObject *self, PyObject *args, PyObject * kwargs)
     {
@@ -81,7 +84,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         Py_BEGIN_ALLOW_THREADS
         bytes = go_ssl_connection_read(ctxptr, read_size, no_wait);
         Py_END_ALLOW_THREADS
-        SAFEPY_Return(bytes);
+        SAFEPY_Return
+        return (bytes);
     }
 
     static PyObject *ssl_connection_write(PyObject *self, PyObject *args)
@@ -94,7 +98,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         Py_BEGIN_ALLOW_THREADS
         len = go_ssl_connection_write(ctxptr, bytes);
         Py_END_ALLOW_THREADS
-        SAFEPY_Return(PyLong_FromLong(len));
+        SAFEPY_Return
+        return (PyLong_FromLong(len));
     }
 
     static PyObject *ssl_connection_h2_support(PyObject *self, PyObject *args)
@@ -103,7 +108,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool h2_support = go_ssl_connection_h2_support(ctxptr);
-        SAFEPY_Return(py_bool_from_bool(h2_support));
+        SAFEPY_Return
+        return (py_bool_from_bool(h2_support));
     }
 
 
@@ -113,7 +119,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         PyObject * leaf_cert = go_ssl_connection_get_cert(ctxptr);
-        SAFEPY_Return(leaf_cert);
+        SAFEPY_Return
+        return (leaf_cert);
     }
 
         static PyObject *ssl_connection_close(PyObject *self, PyObject *args)
@@ -124,7 +131,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_close(ctxptr, close_context);
-        SAFEPY_Return(py_bool_from_bool(closed));
+        SAFEPY_Return
+        return (py_bool_from_bool(closed));
     }
 
 
@@ -137,7 +145,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "nd", &ctxptr, &blockTimeout))
             return NULL;
         go_ssl_connection_set_block_max(ctxptr, blockTimeout);
-        SAFEPY_Return(Py_NewRef(Py_None));
+        SAFEPY_Return
+        Py_RETURN_NONE;
     }
 
 
@@ -148,7 +157,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_ssl_connection_closed(ctxptr);
-        SAFEPY_Return(py_bool_from_bool(closed));
+        SAFEPY_Return
+        return (py_bool_from_bool(closed));
     }
 
         static PyObject *ssl_connection_do_handshake(PyObject *self, PyObject *args)
@@ -160,7 +170,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         Py_BEGIN_ALLOW_THREADS
         done = go_ssl_connection_do_handshake(ctxptr);
         Py_END_ALLOW_THREADS
-        SAFEPY_Return(py_bool_from_bool(done));
+        SAFEPY_Return
+        return (py_bool_from_bool(done));
     }
 
         static PyObject *close_go_handle(PyObject *self, PyObject *args)
@@ -169,7 +180,8 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "n", &ctxptr))
             return NULL;
         bool closed = go_delete_handle(ctxptr);
-        SAFEPY_Return(py_bool_from_bool(closed));
+        SAFEPY_Return
+        return (py_bool_from_bool(closed));
     }
 
     static PyMethodDef functions[] = {
@@ -200,6 +212,7 @@ inline PyObject* py_bool_from_bool(bool truth){
     static int pyutls_modexec(PyObject * m){
         if (PyUTLS_Exc == NULL){
             PyUTLS_Exc = PyErr_NewException("pyutls.uTLSError", PyExc_IOError, NULL);
+            go_setup_statics(PyUTLS_Exc);
         }
         Py_INCREF(PyUTLS_Exc);
         if (PyModule_AddObject(m, "error", PyUTLS_Exc) < 0){

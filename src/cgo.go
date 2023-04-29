@@ -23,6 +23,10 @@ ssize_t duplicate_fd(ssize_t fd);
 
 PyObject* ssl_connection_return(ssize_t handle, ssize_t fd);
 
+#ifndef __cplusplus
+extern PyObject* PyUTLS_Exc;
+#endif
+
 */
 import "C"
 import (
@@ -30,6 +34,8 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"runtime"
+	"strings"
 	"time"
 	"unsafe"
 )
@@ -37,6 +43,11 @@ import (
 var (
 	CERT_DELIM = []byte("|!|!|")
 )
+
+//export go_setup_statics
+func go_setup_statics(utls_exc *C.PyObject) {
+	C.PyUTLS_Exc = utls_exc
+}
 
 //export build_bytes
 func build_bytes(b []byte) *C.PyObject {
@@ -100,9 +111,27 @@ func CreateBytes() []byte {
 	return []byte("Hello")
 }
 
+func getStack() string {
+	var pcs [32]uintptr
+	n := runtime.Callers(0, pcs[:])
+	// pcs = pcs[:n]
+	f := &strings.Builder{}
+	fmt.Fprintln(f, "----")
+	fmt.Fprintln(f, "Go Stack Trace:")
+	for i := 3; i < n-4; i++ {
+		pc := pcs[i]
+		fn := runtime.FuncForPC(pc)
+		file, line := fn.FileLine(pc)
+
+		fmt.Fprintf(f, "\t%s:%d %s\n", file, line, fn.Name())
+	}
+	return f.String()
+}
+
 func handleError(e error) {
 	if e != nil {
-		estr := C.CString(e.Error())
+		estr := C.CString(e.Error() + "\n" + getStack())
+		fmt.Println()
 		defer C.free(unsafe.Pointer(estr))
 		C.safepy_set_error(estr)
 	}
