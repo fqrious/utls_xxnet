@@ -18,7 +18,7 @@ def test_wrap(ctx, name):
     sock = SSLConnection(ctx, None, SERVER_ADDRESS, b"www.google.com")
     # h2support = pyutls.ssl_connection_h2_support(sock)
     # print("Before Handshake, H2 Support =>", h2support)
-    sock.blockmax = 0.001
+    sock.blockmax = TIMEOUT/2
     sock.do_handshake()
     sock.settimeout(TIMEOUT)
     h2support = sock.is_support_h2()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -57,6 +58,7 @@ func (sc *SSLConnection) wrap() error {
 }
 
 func (sc *SSLConnection) Recv(bufsize uint32) ([]byte, error) {
+	fmt.Println("Will Fail After:", sc.failAfter.Seconds())
 	if sc.failAfter != 0 {
 		defer sc.resetDeadlines()
 		sc.conn.SetReadDeadline(time.Now().Add(sc.failAfter))
@@ -64,8 +66,8 @@ func (sc *SSLConnection) Recv(bufsize uint32) ([]byte, error) {
 	return sc.recv(bufsize)
 }
 func (sc *SSLConnection) resetDeadlines() {
-	sc.conn.SetReadDeadline(time.Time{})
-	sc.conn.SetWriteDeadline(time.Time{})
+	// sc.conn.SetReadDeadline(time.Time{})
+	// sc.conn.SetWriteDeadline(time.Time{})
 }
 
 func (sc *SSLConnection) recv(bufsize uint32) ([]byte, error) {

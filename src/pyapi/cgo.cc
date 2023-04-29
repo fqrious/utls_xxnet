@@ -212,6 +212,7 @@ inline PyObject* py_bool_from_bool(bool truth){
     static int pyutls_modexec(PyObject * m){
         if (PyUTLS_Exc == NULL){
             PyUTLS_Exc = PyErr_NewException("pyutls.uTLSError", PyExc_IOError, NULL);
+            go_setup_statics(PyUTLS_Exc);
         }
         Py_INCREF(PyUTLS_Exc);
         if (PyModule_AddObject(m, "error", PyUTLS_Exc) < 0){

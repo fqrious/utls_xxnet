@@ -4,7 +4,7 @@
 #include "safepy.h"
 // #include "cgo.h"
 
-    // extern PyObject* PyUTLS_Exc;
+    PyObject* PyUTLS_Exc;
 
     void safepy_Bytes_AsStringAndSize(PyObject* bytes, char **bufptr, Py_ssize_t* sizeptr){
         SAFEPY_BEGIN
@@ -21,10 +21,17 @@
 
     void safepy_set_error(char* err){
         SAFEPY_BEGIN
-        PyErr_SetString(PyExc_RuntimeError, err);
+        PyErr_SetString(PyUTLS_Exc, err);
         SAFEPY_END
     }
 
+    void e3safepy_set_error(char* err) {
+        // PyTracebackObject
+        // PyException_SetTraceback
+        // PyErr_SetString(PyExc_Exception, err);
+        // PyErr_SetObject(PyExc_Exception, stackTrace);
+        // Py_XDECREF(stackTrace);
+    }
      //
     ssize_t duplicate_fd(ssize_t fd)
     {
