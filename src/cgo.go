@@ -178,10 +178,17 @@ func duplicate_fd(conn net.Conn) C.ssize_t {
 	fdValue := reflect.ValueOf(tcpConn).Elem().FieldByName("fd").Elem()
 	sysfd := fdValue.FieldByName("pfd").FieldByName("Sysfd")
 	var fd uintptr
-	if sysfd.Kind() == reflect.Uint {
+	// avoid panic by testing kind
+	switch sysfd.Kind() {
+	case reflect.Uintptr:
+	case reflect.Uint64:
 		fd = uintptr(sysfd.Uint())
-	} else {
+		break
+	case reflect.Int:
 		fd = uintptr(sysfd.Int())
+		break
+	default:
+		panic("fd type (" + sysfd.Kind().String() + ") is not supported")
 	}
 	// fmt.Println("got fd", fd)
 	// fd := f.Fd()
