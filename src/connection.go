@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net"
 	"os"
 	"time"
@@ -77,7 +78,10 @@ func (sc *SSLConnection) recv(bufsize uint32) ([]byte, error) {
 func (sc *SSLConnection) RecvNoWait(bufsize uint32) ([]byte, error) {
 	defer sc.resetDeadlines()
 	sc.conn.SetDeadline(time.Now().Add(time.Millisecond * 1))
-	data, _ := sc.recv(bufsize)
+	data, err := sc.recv(bufsize)
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		err = nil
+	}
 	return data, nil
 }
 
