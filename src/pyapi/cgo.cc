@@ -63,7 +63,6 @@ inline PyObject* py_bool_from_bool(bool truth){
         if (!PyArg_ParseTuple(args, "ppS", &blunt, &padding, &bytes))
             return NULL;
         Py_XINCREF(bytes);
-        std::cout << "here in c";
         auto ctx = go_new_ssl_context_from_bytes(bytes, blunt, padding);
         Py_XDECREF(bytes);
         SAFEPY_Return
