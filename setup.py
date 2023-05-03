@@ -3,7 +3,7 @@ import sysconfig
 from setuptools import find_packages, setup, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.build import build
-from setup_helpers import build_lib_from_dll, get_ld_flags, run_command_silently, touch
+from setup_helpers import build_lib_from_dll, get_ld_flags, run_command_silently, touch, is_android
 
 libdir = "build/lib"
 
@@ -22,14 +22,18 @@ class CustomBuildExtCommand(build_ext):
     def run(self):
         # Run custom command here
         libname = 'libgoutls.dll'
-        buildmode = 'c-archive'
+        buildmode = 'c-shared'
         if platform.system() == "Windows":
-            buildmode = "c-shared"
             version = sysconfig.get_config_var('VERSION')
             prefix = sysconfig.get_config_var('prefix')
             self.configure_env['CGO_LDFLAGS'] = f"-L '{prefix}' -lpython{version}"
             self.extra_dlls.append(os.path.join(libdir, libname))
+        elif is_android():
+            print("Building for android")
+            libname = "libgoutls.so"
+            self.extra_dlls.append(os.path.join(libdir, libname))
         else:
+            buildmode = "c-archive"
             touch(libdir, libname)
             libname = "libgoutls.a"
         if platform.system() == 'Darwin':

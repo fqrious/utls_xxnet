@@ -1,5 +1,6 @@
 import subprocess, platform
 import os, re
+import sys
 import sysconfig
 FUNCTION_MATCH = re.compile('\d+\s+[0-9A-F]+\s+[0-9A-F]+\s(\w+)')
 
@@ -52,3 +53,7 @@ def get_ld_flags():
     if 'clang' in exe or 'g++' in exe or 'gcc' in exe:
         return ' '.join(cmd.split(' ')[2:])
     raise Exception('Unsupported compiler/os: %s'%exe)
+
+def is_android():
+    # return True
+    return hasattr(sys, "getandroidapilevel")
