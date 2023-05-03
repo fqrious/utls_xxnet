@@ -57,3 +57,6 @@ def get_ld_flags():
 def is_android():
     # return True
     return hasattr(sys, "getandroidapilevel")
+
+def is_windows():
+    return platform.system() == "Windows"
