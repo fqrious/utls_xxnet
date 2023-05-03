@@ -55,7 +55,7 @@
     {
         // return Py_BuildValue("(ii)", handle, fd);
         SAFEPY_BEGIN
-        PyObject *out = Py_BuildValue("(ii)", handle, fd);
+        PyObject *out = PyTuple_Pack(2, PyLong_FromSsize_t(handle), PyLong_FromSsize_t(fd));
         SAFEPY_END
         return out;
     }

@@ -180,11 +180,10 @@ func duplicate_fd(conn net.Conn) C.ssize_t {
 	var fd uintptr
 	// avoid panic by testing kind
 	switch sysfd.Kind() {
-	case reflect.Uintptr:
-	case reflect.Uint64:
+	case reflect.Uintptr, reflect.Uint64, reflect.Uint, reflect.Uint32:
 		fd = uintptr(sysfd.Uint())
 		break
-	case reflect.Int:
+	case reflect.Int, reflect.Int32, reflect.Int64:
 		fd = uintptr(sysfd.Int())
 		break
 	default:
