@@ -17,6 +17,8 @@
 build/
 tester/
 .vscode/
+.idea
+.eggs
 
 # Ignore python bytecodes
 dist/

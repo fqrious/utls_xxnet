@@ -10,12 +10,12 @@ import h2.events
 logger = getLogger(__name__)
 TIMEOUT = 5
 
-SERVER_ADDRESS = "2a00:1450:4009:820::101e"
-SERVER_ADDRESS = "www.google.com:443"
+# SERVER_ADDRESS = "2a00:1450:4009:820::101e"
+SERVER_ADDRESS = "www.bing.com:443"
 
 def test_wrap(ctx, name):
     print("=============>", name, "<=============")
-    sock = SSLConnection(ctx, None, SERVER_ADDRESS, b"www.google.com")
+    sock = SSLConnection(ctx, None, SERVER_ADDRESS, b"www.bing.com")
     # h2support = pyutls.ssl_connection_h2_support(sock)
     # print("Before Handshake, H2 Support =>", h2support)
     sock.blockmax = TIMEOUT/2
@@ -38,7 +38,7 @@ def write(sock, is_h2):
     # try:
         if is_h2:
             return write_h2(sock)
-        sock.send(b"HEAD / HTTP/1.1\r\nHost: www.google.com\r\n\r\n")
+        sock.send(b"HEAD / HTTP/1.1\r\nHost: www.bing.com\r\n\r\n")
         out =  sock.recv(5)
         out +=  sock.recv(5000)
         print(len(out), out)
@@ -57,7 +57,7 @@ def write_h2(sock):
     headers = [
         (':method', 'HEAD'),
         (':path', '/'),
-        (':authority', 'www.google.com'),
+        (':authority', 'www.bing.com'),
         (':scheme', 'https'),
     ]
     c.send_headers(1, headers, end_stream=True)
@@ -158,7 +158,7 @@ class sslsock():
 
 def test_wrap_default():
     import ssl, socket
-    SERVER_NAME, SERVER_PORT = "www.google.com", 443
+    SERVER_NAME, SERVER_PORT = "www.bing.com", 443
     # generic socket and ssl configuration
     socket.setdefaulttimeout(TIMEOUT)
     ctx = ssl.create_default_context()
