@@ -9,10 +9,10 @@ import threading, queue
 import codecs
 from asn1crypto.x509 import Certificate
 
-import utils
+from . import utils
 
 
-from pyutls import (
+from . import (
 
     #  ssl connection functions
     new_ssl_connection,
@@ -57,7 +57,6 @@ class HandleObject:
     @classmethod
     def run_static(cls, fn, *args, **kwargs):
         # print("====>", fn, args, kwargs)
-        print("calling ", fn)
         return fn(*args, **kwargs)
     @classmethod
     def _run_no_block(cls, q, fn, *args, **kw):
@@ -109,7 +108,7 @@ class SSLContext(HandleObject):
         return "alpn"
 
 
-class SSLConnection(HandleObject):
+class SSLConnection(HandleObject, socket.socket):
     _on_close = None
     CERT_DELIM = b"|!|!|"
     timeout = 0
@@ -141,6 +140,8 @@ class SSLConnection(HandleObject):
         
         self.wrap()
 
+        socket.socket.__init__(self)
+
     @property
     def blockmax(self):
         return self._blockmax
@@ -159,7 +160,7 @@ class SSLConnection(HandleObject):
             if "no route to host" in e.args[0]:
                 raise socket.error
 
-            self._context.logger.exception("wrap %s e:%r", self.ip_str, e)
+            self._context.logger and self._context.logger.exception("wrap %s e:%r", self.ip_str, e)
             raise e
 
         # os.set_blocking(fd, False)
@@ -222,6 +223,8 @@ class SSLConnection(HandleObject):
         cert_arr = cert_bytes.split(self.CERT_DELIM)
         return tuple(map(Certificate.load, cert_arr))
 
+    def sendall(self, data):
+        return self.send(data)
     def send(self, data, flags=0):
         # if len(data) == 0:
         #     return 0
@@ -275,7 +278,7 @@ class SSLConnection(HandleObject):
             return
 
         if self.timeout != t:
-            self._context.logger.debug("settimeout %d", t)
+            self._context.logger and self._context.logger.debug("settimeout %d", t)
             # self.run(ssl_connection_set_timeout, t, t)
             self.timeout = t
 
@@ -286,7 +289,7 @@ class SSLConnection(HandleObject):
 
     def makefile(self, mode='r', bufsize=-1):
         self._makefile_refs += 1
-        return socket._fileobject(self, mode, bufsize, close=True)
+        return socket.SocketIO(self, mode)
 
     def fileno(self):
         return self._fileno
